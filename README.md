@@ -119,13 +119,14 @@ testable. No debounce — the filter is local and instant.
 See [TESTING.md](TESTING.md) for how to run each suite, single-test invocation,
 report locations, and the manual verification checklist.
 
-Unit tests — 45 across 8 classes (`app\src\test`, run with
+Unit tests — 56 across 9 classes (`app\src\test`, run with
 `.\gradlew.bat :app:testDebugUnitTest`):
 
+- `AppResultTest` — `map`/`onSuccess`/`onFailure` fire on the right variant
 - `BreedsResponseDtoTest` — JSON parsing, unknown-key tolerance, malformed input
 - `SafeApiCallTest` — each exception type maps to the expected `AppError`; cancellation rethrown
 - `BreedRepositoryImplTest` — real Retrofit/OkHttp against MockWebServer: success mapping/sorting/caching, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout
-- `DataStoreFavoritesDataSourceTest` — real JVM DataStore: toggle on/off, persistence, defaults
+- `DataStoreFavoritesDataSourceTest` — real JVM DataStore: toggle on/off, persistence, defaults, corrupt-store degradation
 - `BreedListViewModelTest` / `BreedDetailViewModelTest` — Turbine flow tests: state transitions, retry, filtering, favorites reactivity, cold-cache refresh
 - `KoinModulesTest` — DI graph verified with Koin `verify()`
 - `UiErrorTest` — every `AppError` maps to a distinct string resource
