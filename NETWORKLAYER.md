@@ -123,7 +123,7 @@ interface DogApiService {
 
 ---
 
-## Wire-format DTO — `BreedsResponseDto`
+## Wire-format DTOs — `BreedsResponseDto` and `BreedImageDto`
 
 ```kotlin
 @Serializable
@@ -155,11 +155,22 @@ Maps directly to the API's JSON shape:
 - This DTO lives in `data/remote/dto/` and never leaves the data layer —
   it is converted to the domain `Breed` model in `BreedRepositoryImpl`.
 
+`BreedImageDto` follows the same conventions for the image endpoint —
+`message` is a single URL string instead of a map:
+
+```kotlin
+@Serializable
+data class BreedImageDto(
+    val message: String = "",
+    val status: String = "",
+)
+```
+
 ---
 
 ## Exception mapping — `safeApiCall`
 
-Every call to `getAllBreeds()` is wrapped in `safeApiCall`:
+Every API call (`getAllBreeds()` and `getBreedImage()`) is wrapped in `safeApiCall`:
 
 ```kotlin
 suspend fun <T> safeApiCall(block: suspend () -> T): AppResult<T> =
@@ -229,6 +240,10 @@ if (value.status != BreedsResponseDto.STATUS_SUCCESS) {
   silently-empty content.
 - Breeds are **sorted alphabetically** by name at this step so the list is
   always in a consistent order regardless of the API's map iteration order.
+- `toImageUrl()` does the same status check for `fetchBreedImageUrl()` and
+  unwraps the URL string. Image fetches are **not cached** in the repository —
+  each call may return a different random photo; Coil's own memory/disk cache
+  prevents re-downloading the same URL.
 
 ### 3. In-memory cache
 
@@ -287,11 +302,22 @@ with actual bytes.
 |---|---|
 | `BreedsResponseDtoTest` | Valid JSON parsing, unknown-key tolerance, malformed input |
 | `SafeApiCallTest` | Each exception type → correct `AppError`; `CancellationException` rethrown |
-| `BreedRepositoryImplTest` | Success mapping + sort order + cache update; HTTP 500 → `Http(500)`; garbage body → `Serialization`; `"status":"error"` → `ApiStatus`; connection refused → `NoConnection`; timeout → `Timeout` |
+| `BreedRepositoryImplTest` | Success mapping + sort order + cache update; HTTP 500 → `Http(500)`; garbage body → `Serialization`; `"status":"error"` → `ApiStatus`; connection refused → `NoConnection`; timeout → `Timeout`; image fetch success / `"status":"error"` / HTTP 404 |
 
 MockWebServer is created fresh per test and started on a random port; the
 Retrofit `BASE_URL` is pointed at `http://localhost:<port>/` so no real network
 traffic leaves the test process.
+
+---
+
+## Image loading — Coil
+
+The detail screen's breed photo is rendered by Coil 3 (`AsyncImage`). The
+repository only fetches the photo's **URL** through the Retrofit stack above;
+downloading and caching the image bytes is Coil's job. The
+`coil-network-okhttp` artifact registers its network fetcher automatically via
+ServiceLoader, so no custom `ImageLoader` or DI wiring exists — Coil's default
+memory and disk caches apply.
 
 ---
 
@@ -301,4 +327,5 @@ On the development machine Avast Antivirus Web Shield HTTPS scanning intercepts
 TLS connections from the Android emulator with its own root CA (trusted by
 Windows but not by the Android trust store). This causes `ERR_CERT_AUTHORITY_INVALID`
 / `AppError.NoConnection` in the emulator even though the app's network code
-is correct. See `CLAUDE.md` for the workaround.
+is correct. The same interception breaks Gradle dependency downloads on the
+host (`PKIX path building failed`). See `CLAUDE.md` for both workarounds.

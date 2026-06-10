@@ -143,8 +143,9 @@ never lost on retry.
 
 ### `BreedDetailViewModel`
 
-The detail screen combines three independent flows — the cached breed entry,
-the favorites set, and an optional `refreshError` — into one `uiState`:
+The detail screen combines four independent flows — the cached breed entry,
+the favorites set, an optional `refreshError`, and the breed photo URL — into
+one `uiState`:
 
 ```
 breed != null              →  BreedDetailUiState.Content
@@ -159,6 +160,13 @@ returns to `Loading` rather than staying on the previous error message.
 death, `repository.cachedBreeds.value` is `null`. The ViewModel detects this in
 `init` and triggers `refresh()` automatically, so a deep link or back-stack
 restore still renders content instead of hanging on `Loading` forever.
+
+**Breed photo — graceful degradation, not an error state.** The photo fetch
+(`loadImage()`) runs separately from the breed refresh. On failure the URL is
+set to `""` and the header shows the monogram avatar instead — a broken image
+CDN never replaces working breed content with an error screen, and there is
+deliberately no Retry for the photo alone. `Content.imageUrl` encodes the
+three cases: `null` = still loading, `""` = failed, non-empty = show photo.
 
 ---
 
@@ -190,7 +198,7 @@ Network / IO
 safeApiCall()          catches all Throwables → AppError
      │
      ▼
-toBreeds()             checks "status" field  → AppError.ApiStatus
+toBreeds() / toImageUrl()   check "status" field → AppError.ApiStatus
      │
      ▼
 BreedRepositoryImpl    logs Failure, updates cache on Success
@@ -212,8 +220,8 @@ ErrorContent           localized message + Retry button
 | Test class | What it verifies |
 |---|---|
 | `SafeApiCallTest` | Each exception type maps to the correct `AppError`; `CancellationException` propagates |
-| `BreedRepositoryImplTest` | HTTP 500 → `Http(500)`; garbage body → `Serialization`; `"status":"error"` → `ApiStatus`; connection refused → `NoConnection`; timeout → `Timeout` |
+| `BreedRepositoryImplTest` | HTTP 500 → `Http(500)`; garbage body → `Serialization`; `"status":"error"` → `ApiStatus`; connection refused → `NoConnection`; timeout → `Timeout`; image fetch: `"status":"error"` → `ApiStatus`, 404 → `Http(404)` |
 | `BreedListViewModelTest` | `Failure` result → `UiState.Error`; retry transitions back through `Loading` |
-| `BreedDetailViewModelTest` | Cold-cache refresh on init; error cleared on retry |
+| `BreedDetailViewModelTest` | Cold-cache refresh on init; error cleared on retry; failed photo fetch degrades to `imageUrl = ""` with breed content intact |
 | `UiErrorTest` | Every `AppError` maps to a distinct, non-empty string resource |
 | `BreedListScreenTest` / `BreedDetailScreenTest` | `Error` state renders the error message and retry button nodes |
