@@ -1,3 +1,37 @@
 <resources>
     <string name="app_name">Mini Breeds</string>
+
+    <!-- Screen titles -->
+    <string name="breed_list_title">Dog Breeds</string>
+
+    <!-- Breed list -->
+    <plurals name="breed_count">
+        <item quantity="one">%1$d breed</item>
+        <item quantity="other">%1$d breeds</item>
+    </plurals>
+    <string name="search_hint">Search breeds</string>
+    <string name="search_clear">Clear search</string>
+    <string name="empty_search_results">No breeds match your search</string>
+    <plurals name="sub_breed_count">
+        <item quantity="one">%1$d sub-breed</item>
+        <item quantity="other">%1$d sub-breeds</item>
+    </plurals>
+
+    <!-- Breed detail -->
+    <string name="sub_breeds_title">Sub-breeds</string>
+    <string name="no_sub_breeds">This breed has no sub-breeds</string>
+    <string name="navigate_back">Navigate back</string>
+
+    <!-- Favorites -->
+    <string name="favorite_add">Add %1$s to favorites</string>
+    <string name="favorite_remove">Remove %1$s from favorites</string>
+
+    <!-- Errors -->
+    <string name="error_no_connection">No internet connection. Check your network and try again.</string>
+    <string name="error_timeout">The server is taking too long to respond. Please try again.</string>
+    <string name="error_server">Something went wrong on the server (error %1$d). Please try again later.</string>
+    <string name="error_unexpected_response">Received an unexpected response. Please try again later.</string>
+    <string name="error_api_status">The breed service reported a problem. Please try again later.</string>
+    <string name="error_unknown">Something unexpected went wrong. Please try again.</string>
+    <string name="retry">Retry</string>
 </resources>
