@@ -64,8 +64,19 @@ typed navigation routes). DI is Koin (`di\AppModules.kt`), started in
 
 ## Local environment note
 
-On this dev machine, **Avast Web Shield HTTPS scanning breaks all TLS from the
-Android emulator** (cert trust-anchor failures / `ERR_CERT_AUTHORITY_INVALID`),
-so the live dog.ceo call shows the app's "No internet connection" error screen.
-This is not an app bug — don't debug app networking for it. Disable Avast's HTTPS
-scanning or use a physical device to see the live happy path.
+On this dev machine, **Avast Antivirus interferes in three distinct ways** when
+its shields are active. None of them are app bugs — don't debug app code for them:
+
+1. **Emulator TLS**: Web Shield HTTPS scanning breaks all TLS from the Android
+   emulator (cert trust-anchor failures / `ERR_CERT_AUTHORITY_INVALID`), so the
+   live dog.ceo call shows the app's "No internet connection" error screen.
+   Disable Avast's HTTPS scanning or use a physical device.
+2. **Gradle dependency downloads**: the same interception makes new dependency
+   downloads fail with `PKIX path building failed`. Fixed machine-locally in
+   `%USERPROFILE%\.gradle\gradle.properties` (not in this repo) by pointing the
+   Gradle JVM at the Windows certificate store
+   (`-Djavax.net.ssl.trustStore=NUL -Djavax.net.ssl.trustStoreType=Windows-ROOT`).
+3. **DataStore unit tests**: File Shield scans freshly written files and holds
+   them open, so the two `DataStoreFavoritesDataSourceTest` tests that write
+   twice in a row fail with `IOException: Unable to rename …preferences_pb.tmp`.
+   See TESTING.md §1.

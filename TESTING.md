@@ -18,21 +18,29 @@ Design decisions sections in `README.md`.
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
-56 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
+61 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
 
 | Class | What it proves |
 |---|---|
 | `core\AppResultTest` | `map`/`onSuccess`/`onFailure` fire on the right variant and pass the other through unchanged; factory helpers build the matching variants |
 | `data\remote\BreedsResponseDtoTest` | Spec-shaped JSON parses; unknown keys ignored; malformed JSON throws `SerializationException` |
 | `data\remote\SafeApiCallTest` | Every exception type maps to the right `AppError`; `CancellationException` is rethrown |
-| `data\repository\BreedRepositoryImplTest` | Real Retrofit/OkHttp/Json against MockWebServer: success mapping/sorting/caching, empty-but-successful body, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout |
+| `data\repository\BreedRepositoryImplTest` | Real Retrofit/OkHttp/Json against MockWebServer: success mapping/sorting/caching, empty-but-successful body, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout; breed-image fetch success, `"status":"error"`, and HTTP 404 |
 | `data\local\DataStoreFavoritesDataSourceTest` | Real JVM DataStore: toggle on/off, persistence across instances, empty default; a corrupt (`IOException`) store degrades to empty while non-IO failures propagate |
 | `ui\breedlist\BreedListViewModelTest` | Turbine: Loading→Content, Error→retry→Content, case-insensitive + trimmed filtering, empty-result flag, genuinely-empty list isn't flagged as no-results, favorites reactivity |
-| `ui\breeddetail\BreedDetailViewModelTest` | Warm-cache content; cold cache triggers refresh; refresh failure → Error; favorite toggle; missing nav argument fails fast |
+| `ui\breeddetail\BreedDetailViewModelTest` | Warm-cache content; cold cache triggers refresh; refresh failure → Error; favorite toggle; missing nav argument fails fast; photo URL lands in Content on success and degrades to empty (monogram fallback) on failure |
 | `ui\common\UiErrorTest` | Each `AppError` maps to its own distinct string resource; `Http` carries the status code |
 | `di\KoinModulesTest` | The Koin graph resolves (Koin `verify()`) |
 
 HTML report: `app\build\reports\tests\testDebugUnitTest\index.html`
+
+**Caveat on this dev machine:** with Avast's File Shield active, the two
+DataStore tests that write to disk twice in a row fail with
+`IOException: Unable to rename …preferences_pb.tmp` — the shield scans the
+freshly written file and holds it open, so DataStore's atomic rename fails.
+This is environmental, not an app or test bug (the same tests are green with
+Avast paused and on other machines). Add an Avast exception for
+`%LOCALAPPDATA%\Temp` or pause File Shield while running unit tests.
 
 Run a single class or test:
 
@@ -47,7 +55,7 @@ Run a single class or test:
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-18 tests across 3 classes in `app\src\androidTest\java\com\profico\minibreeds\`:
+20 tests across 3 classes in `app\src\androidTest\java\com\profico\minibreeds\`:
 
 - `ui\breedlist\BreedListScreenTest` / `ui\breeddetail\BreedDetailScreenTest` —
   Compose tests on the **stateless** screens: every UI state renders, and every
@@ -137,6 +145,9 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
 ```
 
-The JVM unit suite (`:app:testDebugUnitTest`, 56 tests) is green as of
-2026-06-10. The lint, instrumented, and release tasks were last verified green
-on 2026-06-10 and are unaffected by the unit-test-only additions since.
+The JVM unit suite (`:app:testDebugUnitTest`, 61 tests) was last run on
+2026-06-11: 59 green, plus the two environment-dependent DataStore failures
+described in §1 (Avast File Shield; not app bugs). Lint and `assembleRelease`
+verified green on 2026-06-11; the instrumented suite (20 tests) was last
+verified green on 2026-06-10, before the two detail-screen photo tests were
+added — rerun it with a device attached.

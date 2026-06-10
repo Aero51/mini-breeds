@@ -17,6 +17,7 @@ navigationCompose = "2.9.8"
 materialIconsCore = "1.7.8"
 datastore = "1.2.0"
 turbine = "1.2.1"
+coil = "3.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -53,6 +54,8 @@ koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compos
 koin-test = { group = "io.insert-koin", name = "koin-test" }
 koin-test-junit4 = { group = "io.insert-koin", name = "koin-test-junit4" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

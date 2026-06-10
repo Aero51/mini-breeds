@@ -106,6 +106,42 @@ class BreedDetailViewModelTest {
     }
 
     @Test
+    fun `successful image fetch puts the url in content`() = runTest {
+        val repository = FakeBreedRepository(initialCache = breeds).apply {
+            imageResult = AppResult.Success("https://images.dog.ceo/bulldog.jpg")
+        }
+
+        val vm = viewModel(repository)
+
+        vm.uiState.test {
+            var state = awaitItem()
+            while (state !is BreedDetailUiState.Content || state.imageUrl == null) {
+                state = awaitItem()
+            }
+            assertEquals("https://images.dog.ceo/bulldog.jpg", state.imageUrl)
+        }
+    }
+
+    @Test
+    fun `failed image fetch degrades to empty url with content intact`() = runTest {
+        val repository = FakeBreedRepository(initialCache = breeds).apply {
+            imageResult = AppResult.Failure(AppError.Timeout)
+        }
+
+        val vm = viewModel(repository)
+
+        vm.uiState.test {
+            var state = awaitItem()
+            while (state !is BreedDetailUiState.Content || state.imageUrl == null) {
+                state = awaitItem()
+            }
+            assertEquals("", state.imageUrl)
+            assertEquals("bulldog", state.name)
+            assertEquals(listOf("boston", "french"), state.subBreeds)
+        }
+    }
+
+    @Test
     fun `missing breed name argument fails fast`() {
         val repository = FakeBreedRepository(initialCache = breeds)
 

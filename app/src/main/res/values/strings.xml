@@ -18,6 +18,7 @@
     </plurals>
 
     <!-- Breed detail -->
+    <string name="breed_photo">Photo of a %1$s</string>
     <string name="sub_breeds_title">Sub-breeds</string>
     <string name="no_sub_breeds">This breed has no sub-breeds</string>
     <string name="navigate_back">Navigate back</string>

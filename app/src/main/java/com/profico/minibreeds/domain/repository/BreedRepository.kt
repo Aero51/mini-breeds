@@ -20,6 +20,9 @@ interface BreedRepository {
     /** Observes a single breed from the cache; emits null while absent. */
     fun observeBreed(name: String): Flow<Breed?>
 
+    /** Fetches the URL of one random image for [breedName]. Not cached — each call may return a different image. */
+    suspend fun fetchBreedImageUrl(breedName: String): AppResult<String>
+
     /** Names of breeds the user marked as favorite. */
     val favorites: Flow<Set<String>>
 

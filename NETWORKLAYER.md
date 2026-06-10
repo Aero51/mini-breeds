@@ -107,12 +107,17 @@ It wires the `Json` singleton as the body deserializer, so the same
 interface DogApiService {
     @GET("api/breeds/list/all")
     suspend fun getAllBreeds(): BreedsResponseDto
+
+    @GET("api/breed/{breed}/images/random")
+    suspend fun getBreedImage(@Path("breed") breed: String): BreedImageDto
 }
 ```
 
-- A single `suspend fun` endpoint — Retrofit 3 handles coroutine dispatch
+- Two `suspend fun` endpoints — Retrofit 3 handles coroutine dispatch
   natively without a `CallAdapter`.
-- The full URL resolves to `https://dog.ceo/api/breeds/list/all`.
+- `getAllBreeds` resolves to `https://dog.ceo/api/breeds/list/all`;
+  `getBreedImage` returns the URL of one random photo for the breed
+  (used by the detail screen header).
 - Retrofit generates the implementation at runtime:
   `get<Retrofit>().create(DogApiService::class.java)`.
 

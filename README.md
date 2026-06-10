@@ -10,8 +10,9 @@ favorites persisted across app restarts with Preferences DataStore.
 
 **UI:** custom warm Material 3 theme (light + dark), card-based list with per-breed
 color-coded monogram avatars (hue derived from the breed name, stable everywhere the
-breed appears), pill-shaped search bar, spring-animated favorite hearts, animated
-list reordering while filtering, and illustrated empty/error states.
+breed appears), a random photo of the breed on the detail screen (Coil; falls back
+to the monogram if the fetch fails), pill-shaped search bar, spring-animated favorite
+hearts, animated list reordering while filtering, and illustrated empty/error states.
 
 | Breed list | Breed detail |
 |---|---|
@@ -25,6 +26,7 @@ list reordering while filtering, and illustrated empty/error states.
 | Architecture | MVVM, unidirectional data flow, `StateFlow` UI state |
 | Navigation | Navigation Compose with typed (`@Serializable`) routes |
 | Networking | Retrofit 3 + OkHttp 5 + kotlinx.serialization |
+| Images | Coil 3 (breed photo on the detail screen) |
 | DI | Koin 4 |
 | Persistence | Preferences DataStore (favorites) |
 | Tests | JUnit4, Turbine, MockWebServer 3, Compose UI test, hand-written fakes |
@@ -69,6 +71,8 @@ All failures crossing a layer boundary are values of a sealed `AppError` taxonom
 - `ui\common\UiError.kt` maps each `AppError` case to a distinct, user-friendly string
   resource; every error screen offers Retry.
 - A corrupted DataStore file degrades to an empty favorites set instead of crashing.
+- A failed breed-photo fetch degrades to the monogram avatar — decorative content
+  never replaces working breed data with an error screen.
 
 ## Design decisions & rationale
 
@@ -119,18 +123,19 @@ testable. No debounce — the filter is local and instant.
 See [TESTING.md](TESTING.md) for how to run each suite, single-test invocation,
 report locations, and the manual verification checklist.
 
-Unit tests — 45 across 8 classes (`app\src\test`, run with
+Unit tests — 61 across 9 classes (`app\src\test`, run with
 `.\gradlew.bat :app:testDebugUnitTest`):
 
+- `AppResultTest` — `map`/`onSuccess`/`onFailure` fire on the right variant
 - `BreedsResponseDtoTest` — JSON parsing, unknown-key tolerance, malformed input
 - `SafeApiCallTest` — each exception type maps to the expected `AppError`; cancellation rethrown
-- `BreedRepositoryImplTest` — real Retrofit/OkHttp against MockWebServer: success mapping/sorting/caching, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout
-- `DataStoreFavoritesDataSourceTest` — real JVM DataStore: toggle on/off, persistence, defaults
-- `BreedListViewModelTest` / `BreedDetailViewModelTest` — Turbine flow tests: state transitions, retry, filtering, favorites reactivity, cold-cache refresh
+- `BreedRepositoryImplTest` — real Retrofit/OkHttp against MockWebServer: success mapping/sorting/caching, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout; image fetch success / API error / 404
+- `DataStoreFavoritesDataSourceTest` — real JVM DataStore: toggle on/off, persistence, defaults, corrupt-store degradation
+- `BreedListViewModelTest` / `BreedDetailViewModelTest` — Turbine flow tests: state transitions, retry, filtering, favorites reactivity, cold-cache refresh, photo-fetch success and graceful degradation
 - `KoinModulesTest` — DI graph verified with Koin `verify()`
 - `UiErrorTest` — every `AppError` maps to a distinct string resource
 
-Instrumented tests — 18 across 3 classes (`app\src\androidTest`, run with
+Instrumented tests — 20 across 3 classes (`app\src\androidTest`, run with
 `.\gradlew.bat :app:connectedDebugAndroidTest`, emulator/device required):
 
 - `BreedListScreenTest` / `BreedDetailScreenTest` — Compose UI tests on the stateless screens (states, callbacks, search, favorites), no Koin or network involved

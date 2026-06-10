@@ -7,6 +7,7 @@ import com.profico.minibreeds.core.DispatcherProvider
 import com.profico.minibreeds.core.onFailure
 import com.profico.minibreeds.data.local.FavoritesDataSource
 import com.profico.minibreeds.data.remote.DogApiService
+import com.profico.minibreeds.data.remote.dto.BreedImageDto
 import com.profico.minibreeds.data.remote.dto.BreedsResponseDto
 import com.profico.minibreeds.data.remote.safeApiCall
 import com.profico.minibreeds.domain.model.Breed
@@ -44,6 +45,13 @@ class BreedRepositoryImpl(
     override fun observeBreed(name: String): Flow<Breed?> =
         breedsCache.map { breeds -> breeds?.firstOrNull { it.name == name } }
 
+    override suspend fun fetchBreedImageUrl(breedName: String): AppResult<String> =
+        withContext(dispatchers.io) {
+            safeApiCall { api.getBreedImage(breedName) }
+                .toImageUrl()
+                .onFailure { error -> Log.w(TAG, "Breed image fetch failed: $error") }
+        }
+
     override val favorites: Flow<Set<String>> = favoritesDataSource.favorites
 
     override suspend fun toggleFavorite(breedName: String) {
@@ -63,6 +71,18 @@ class BreedRepositoryImpl(
                             .map { (name, subBreeds) -> Breed(name = name, subBreeds = subBreeds) }
                             .sortedBy { it.name },
                     )
+                }
+        }
+
+    /** Unwraps the image URL, or a [AppResult.Failure] if the API status field is not "success". */
+    private fun AppResult<BreedImageDto>.toImageUrl(): AppResult<String> =
+        when (this) {
+            is AppResult.Failure -> this
+            is AppResult.Success ->
+                if (value.status != BreedImageDto.STATUS_SUCCESS) {
+                    AppResult.Failure(AppError.ApiStatus(value.status))
+                } else {
+                    AppResult.Success(value.message)
                 }
         }
 

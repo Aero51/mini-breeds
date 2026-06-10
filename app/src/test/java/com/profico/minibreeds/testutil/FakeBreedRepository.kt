@@ -36,6 +36,11 @@ class FakeBreedRepository(
     override fun observeBreed(name: String): Flow<Breed?> =
         cache.map { breeds -> breeds?.firstOrNull { it.name == name } }
 
+    /** Result returned by [fetchBreedImageUrl]; defaults to a stable fake URL. */
+    var imageResult: AppResult<String> = AppResult.Success("https://example.com/dog.jpg")
+
+    override suspend fun fetchBreedImageUrl(breedName: String): AppResult<String> = imageResult
+
     override val favorites: Flow<Set<String>> = favoritesState
 
     override suspend fun toggleFavorite(breedName: String) {

@@ -32,18 +32,23 @@ class BreedDetailViewModel(
     /** Non-null when the cold-cache refresh failed; cleared on retry. */
     private val refreshError = MutableStateFlow<AppError?>(null)
 
-    /** Combined state merging the cached breed entry, favorites, and any refresh error. */
+    /** Random photo URL: null while loading, empty when the fetch failed. */
+    private val imageUrl = MutableStateFlow<String?>(null)
+
+    /** Combined state merging the cached breed entry, favorites, image URL, and any refresh error. */
     val uiState: StateFlow<BreedDetailUiState> =
         combine(
             repository.observeBreed(breedName),
             repository.favorites,
             refreshError,
-        ) { breed, favorites, error ->
+            imageUrl,
+        ) { breed, favorites, error, image ->
             when {
                 breed != null -> BreedDetailUiState.Content(
                     name = breed.name,
                     subBreeds = breed.subBreeds,
                     isFavorite = breed.name in favorites,
+                    imageUrl = image,
                 )
                 error != null -> BreedDetailUiState.Error(error)
                 else -> BreedDetailUiState.Loading
@@ -60,10 +65,14 @@ class BreedDetailViewModel(
         if (repository.cachedBreeds.value == null) {
             refresh()
         }
+        loadImage()
     }
 
-    /** Re-triggers a network refresh after a previous failure. */
-    fun retry() = refresh()
+    /** Re-triggers the breed refresh and image fetch after a previous failure. */
+    fun retry() {
+        refresh()
+        loadImage()
+    }
 
     /** Toggles the favorite status of the current breed. */
     fun onToggleFavorite() {
@@ -77,6 +86,16 @@ class BreedDetailViewModel(
             when (val result = repository.refreshBreeds()) {
                 is AppResult.Success -> Unit // cache update flows into uiState
                 is AppResult.Failure -> refreshError.value = result.error
+            }
+        }
+    }
+
+    /** Fetches the breed photo. A failure degrades to the monogram avatar — it never replaces breed content with an error screen. */
+    private fun loadImage() {
+        viewModelScope.launch {
+            imageUrl.value = when (val result = repository.fetchBreedImageUrl(breedName)) {
+                is AppResult.Success -> result.value
+                is AppResult.Failure -> ""
             }
         }
     }

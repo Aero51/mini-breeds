@@ -103,4 +103,19 @@ class BreedDetailScreenTest {
 
         composeTestRule.onNodeWithTag(CommonTestTags.LOADING_INDICATOR).assertIsDisplayed()
     }
+
+    @Test
+    fun contentStateWithImageUrl_showsBreedPhoto() {
+        setScreen(uiState = contentState.copy(imageUrl = "https://example.com/dog.jpg"))
+
+        composeTestRule.onNodeWithTag(BreedDetailTestTags.IMAGE).assertIsDisplayed()
+    }
+
+    @Test
+    fun contentStateWithoutImageUrl_fallsBackToAvatar() {
+        setScreen(uiState = contentState.copy(imageUrl = ""))
+
+        composeTestRule.onNodeWithTag(BreedDetailTestTags.IMAGE).assertDoesNotExist()
+        composeTestRule.onNodeWithTag(BreedDetailTestTags.TITLE).assertIsDisplayed()
+    }
 }

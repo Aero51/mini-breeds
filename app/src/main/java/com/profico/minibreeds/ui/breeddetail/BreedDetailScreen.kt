@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,12 +27,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.profico.minibreeds.R
 import com.profico.minibreeds.ui.common.BreedAvatar
 import com.profico.minibreeds.ui.common.ErrorContent
@@ -45,6 +49,7 @@ object BreedDetailTestTags {
     const val BACK_BUTTON = "breed_detail_back"
     const val FAVORITE_BUTTON = "breed_detail_favorite"
     const val TITLE = "breed_detail_title"
+    const val IMAGE = "breed_detail_image"
     const val NO_SUB_BREEDS = "breed_detail_no_sub_breeds"
     /** Tag for the sub-breed card identified by [name]. */
     fun subBreed(name: String) = "sub_breed_$name"
@@ -168,7 +173,10 @@ private fun BreedDetailContent(
     }
 }
 
-/** Centered hero section with a large [BreedAvatar], the breed name, and the sub-breed count. */
+/**
+ * Centered hero section with a breed photo (or the monogram avatar while the
+ * photo loads / when the fetch failed), the breed name, and the sub-breed count.
+ */
 @Composable
 private fun BreedHeader(content: BreedDetailUiState.Content) {
     Column(
@@ -177,7 +185,20 @@ private fun BreedHeader(content: BreedDetailUiState.Content) {
             .padding(top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BreedAvatar(name = content.name, size = 88.dp)
+        if (content.imageUrl.isNullOrEmpty()) {
+            BreedAvatar(name = content.name, size = 88.dp)
+        } else {
+            AsyncImage(
+                model = content.imageUrl,
+                contentDescription = stringResource(R.string.breed_photo, content.name),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .testTag(BreedDetailTestTags.IMAGE),
+            )
+        }
         Text(
             text = content.name.replaceFirstChar { it.uppercase() },
             style = MaterialTheme.typography.headlineMedium,

@@ -193,4 +193,31 @@ class BreedRepositoryImplTest {
         assertEquals(listOf("hound"), favorites.toggledNames)
         assertTrue(repository.favorites.first().contains("hound"))
     }
+
+    @Test
+    fun `successful image fetch returns the url`() = runTest(testDispatcher) {
+        enqueue("""{"message": "https://images.dog.ceo/breeds/hound/n123.jpg", "status": "success"}""")
+
+        val result = repository.fetchBreedImageUrl("hound")
+
+        assertEquals(AppResult.Success("https://images.dog.ceo/breeds/hound/n123.jpg"), result)
+    }
+
+    @Test
+    fun `image fetch with api status error maps to ApiStatus`() = runTest(testDispatcher) {
+        enqueue("""{"message": "Breed not found", "status": "error"}""")
+
+        val result = repository.fetchBreedImageUrl("not-a-breed")
+
+        assertEquals(AppResult.Failure(AppError.ApiStatus("error")), result)
+    }
+
+    @Test
+    fun `image fetch http 404 maps to Http error`() = runTest(testDispatcher) {
+        enqueue("not found", code = 404)
+
+        val result = repository.fetchBreedImageUrl("not-a-breed")
+
+        assertEquals(AppResult.Failure(AppError.Http(404)), result)
+    }
 }
