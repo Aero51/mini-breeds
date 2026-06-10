@@ -84,6 +84,43 @@ class BreedListViewModelTest {
     }
 
     @Test
+    fun `empty breed list is Content without the no-results flag`() = runTest {
+        // A genuinely empty list (API returned nothing) must not be mistaken for
+        // an empty *search* result, so noResultsForQuery stays false.
+        val repository = FakeBreedRepository().apply {
+            refreshResults += AppResult.Success(emptyList())
+        }
+        val vm = viewModel(repository)
+
+        vm.uiState.test {
+            assertEquals(BreedListUiState.Loading, awaitItem())
+
+            val content = awaitItem() as BreedListUiState.Content
+            assertTrue(content.rows.isEmpty())
+            assertTrue(!content.noResultsForQuery)
+        }
+    }
+
+    @Test
+    fun `query is trimmed before filtering`() = runTest {
+        val repository = FakeBreedRepository().apply {
+            refreshResults += AppResult.Success(breeds)
+        }
+        val vm = viewModel(repository)
+
+        vm.uiState.test {
+            awaitItem() // Loading
+            awaitItem() // full Content
+
+            vm.onQueryChange("  bull  ")
+
+            val filtered = awaitItem() as BreedListUiState.Content
+            assertEquals(listOf("bulldog"), filtered.rows.map { it.name })
+            assertTrue(!filtered.noResultsForQuery)
+        }
+    }
+
+    @Test
     fun `query with no matches sets noResultsForQuery`() = runTest {
         val repository = FakeBreedRepository().apply {
             refreshResults += AppResult.Success(breeds)

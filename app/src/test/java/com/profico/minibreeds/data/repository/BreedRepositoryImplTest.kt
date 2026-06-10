@@ -113,6 +113,16 @@ class BreedRepositoryImplTest {
     }
 
     @Test
+    fun `successful response with no breeds maps to empty list`() = runTest(testDispatcher) {
+        enqueue("""{"message": {}, "status": "success"}""")
+
+        val result = repository.refreshBreeds()
+
+        assertEquals(AppResult.Success(emptyList<Breed>()), result)
+        assertEquals(emptyList<Breed>(), repository.cachedBreeds.value)
+    }
+
+    @Test
     fun `api status other than success maps to ApiStatus error`() = runTest(testDispatcher) {
         enqueue("""{"message": {}, "status": "error"}""")
 

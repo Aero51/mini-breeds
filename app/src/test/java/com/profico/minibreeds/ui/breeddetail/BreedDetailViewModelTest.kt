@@ -10,6 +10,7 @@ import com.profico.minibreeds.testutil.MainDispatcherRule
 import com.profico.minibreeds.ui.navigation.BreedDetailRoute
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -101,6 +102,15 @@ class BreedDetailViewModelTest {
             val updated = awaitItem() as BreedDetailUiState.Content
             assertTrue(updated.isFavorite)
             assertEquals(listOf("bulldog"), repository.toggledNames)
+        }
+    }
+
+    @Test
+    fun `missing breed name argument fails fast`() {
+        val repository = FakeBreedRepository(initialCache = breeds)
+
+        assertThrows(IllegalStateException::class.java) {
+            BreedDetailViewModel(SavedStateHandle(), repository)
         }
     }
 

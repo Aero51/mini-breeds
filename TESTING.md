@@ -18,16 +18,17 @@ Design decisions sections in `README.md`.
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
-45 tests across 8 classes in `app\src\test\java\com\profico\minibreeds\`:
+56 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
 
 | Class | What it proves |
 |---|---|
+| `core\AppResultTest` | `map`/`onSuccess`/`onFailure` fire on the right variant and pass the other through unchanged; factory helpers build the matching variants |
 | `data\remote\BreedsResponseDtoTest` | Spec-shaped JSON parses; unknown keys ignored; malformed JSON throws `SerializationException` |
 | `data\remote\SafeApiCallTest` | Every exception type maps to the right `AppError`; `CancellationException` is rethrown |
-| `data\repository\BreedRepositoryImplTest` | Real Retrofit/OkHttp/Json against MockWebServer: success mapping/sorting/caching, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout |
-| `data\local\DataStoreFavoritesDataSourceTest` | Real JVM DataStore: toggle on/off, persistence across instances, empty default |
-| `ui\breedlist\BreedListViewModelTest` | Turbine: Loading→Content, Error→retry→Content, case-insensitive filtering, empty-result flag, favorites reactivity |
-| `ui\breeddetail\BreedDetailViewModelTest` | Warm-cache content; cold cache triggers refresh; refresh failure → Error; favorite toggle |
+| `data\repository\BreedRepositoryImplTest` | Real Retrofit/OkHttp/Json against MockWebServer: success mapping/sorting/caching, empty-but-successful body, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout |
+| `data\local\DataStoreFavoritesDataSourceTest` | Real JVM DataStore: toggle on/off, persistence across instances, empty default; a corrupt (`IOException`) store degrades to empty while non-IO failures propagate |
+| `ui\breedlist\BreedListViewModelTest` | Turbine: Loading→Content, Error→retry→Content, case-insensitive + trimmed filtering, empty-result flag, genuinely-empty list isn't flagged as no-results, favorites reactivity |
+| `ui\breeddetail\BreedDetailViewModelTest` | Warm-cache content; cold cache triggers refresh; refresh failure → Error; favorite toggle; missing nav argument fails fast |
 | `ui\common\UiErrorTest` | Each `AppError` maps to its own distinct string resource; `Http` carries the status code |
 | `di\KoinModulesTest` | The Koin graph resolves (Koin `verify()`) |
 
@@ -136,4 +137,6 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
 ```
 
-All four are green as of 2026-06-10.
+The JVM unit suite (`:app:testDebugUnitTest`, 56 tests) is green as of
+2026-06-10. The lint, instrumented, and release tasks were last verified green
+on 2026-06-10 and are unaffected by the unit-test-only additions since.
