@@ -5,6 +5,7 @@ import com.profico.minibreeds.core.AppError
 import com.profico.minibreeds.core.AppResult
 import com.profico.minibreeds.core.DispatcherProvider
 import com.profico.minibreeds.core.onFailure
+import com.profico.minibreeds.core.onSuccess
 import com.profico.minibreeds.data.local.FavoritesDataSource
 import com.profico.minibreeds.data.remote.DogApiService
 import com.profico.minibreeds.data.remote.dto.BreedsResponseDto
@@ -35,10 +36,10 @@ class BreedRepositoryImpl(
 
     override suspend fun refreshBreeds(): AppResult<List<Breed>> =
         withContext(dispatchers.io) {
-            val result = safeApiCall { api.getAllBreeds() }.toBreeds()
-            result
+            safeApiCall { api.getAllBreeds() }
+                .toBreeds()
+                .onSuccess { breeds -> breedsCache.value = breeds }
                 .onFailure { error -> Log.w(TAG, "Breed refresh failed: $error") }
-                .also { if (it is AppResult.Success) breedsCache.value = it.value }
         }
 
     override fun observeBreed(name: String): Flow<Breed?> =

@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.profico.minibreeds.core.AppError
-import com.profico.minibreeds.core.AppResult
+import com.profico.minibreeds.core.onFailure
 import com.profico.minibreeds.domain.repository.BreedRepository
 import com.profico.minibreeds.ui.navigation.BreedDetailRoute
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,14 +70,11 @@ class BreedDetailViewModel(
         viewModelScope.launch { repository.toggleFavorite(breedName) }
     }
 
-    /** Performs the network fetch and updates [refreshError] on failure. */
+    /** Performs the network fetch and updates [refreshError] on failure. On success the cache update flows into [uiState] via [BreedRepository.observeBreed]. */
     private fun refresh() {
         viewModelScope.launch {
             refreshError.value = null
-            when (val result = repository.refreshBreeds()) {
-                is AppResult.Success -> Unit // cache update flows into uiState
-                is AppResult.Failure -> refreshError.value = result.error
-            }
+            repository.refreshBreeds().onFailure { refreshError.value = it }
         }
     }
 

@@ -17,6 +17,11 @@ list reordering while filtering, and illustrated empty/error states.
 |---|---|
 | ![Breed list](docs/screenshot_list.png) | ![Breed detail](docs/screenshot_detail.png) |
 
+**New to the codebase?** [WALKTHROUGH.md](WALKTHROUGH.md) explains every class
+and function in plain language. [ALTERNATIVES.md](ALTERNATIVES.md) goes deeper
+on each decision: the alternative implementations considered, their honest
+trade-offs, and the deciding factor.
+
 ## Tech stack
 
 | Concern | Choice |
