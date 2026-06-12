@@ -113,7 +113,7 @@ class BreedDetailScreenTest {
 
     @Test
     fun contentStateWithoutImageUrl_fallsBackToAvatar() {
-        setScreen(uiState = contentState.copy(imageUrl = ""))
+        setScreen(uiState = contentState.copy(imageUrl = null))
 
         composeTestRule.onNodeWithTag(BreedDetailTestTags.IMAGE).assertDoesNotExist()
         composeTestRule.onNodeWithTag(BreedDetailTestTags.TITLE).assertIsDisplayed()

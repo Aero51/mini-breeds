@@ -4,7 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.profico.minibreeds.core.AppError
-import com.profico.minibreeds.core.AppResult
+import com.profico.minibreeds.core.onFailure
+import com.profico.minibreeds.core.onSuccess
 import com.profico.minibreeds.domain.repository.BreedRepository
 import com.profico.minibreeds.ui.navigation.BreedDetailRoute
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,7 @@ class BreedDetailViewModel(
     /** Non-null when the cold-cache refresh failed; cleared on retry. */
     private val refreshError = MutableStateFlow<AppError?>(null)
 
-    /** Random photo URL: null while loading, empty when the fetch failed. */
+    /** Random photo URL; stays null until a fetch succeeds. */
     private val imageUrl = MutableStateFlow<String?>(null)
 
     /** Combined state merging the cached breed entry, favorites, image URL, and any refresh error. */
@@ -79,24 +80,18 @@ class BreedDetailViewModel(
         viewModelScope.launch { repository.toggleFavorite(breedName) }
     }
 
-    /** Performs the network fetch and updates [refreshError] on failure. */
+    /** Performs the network fetch and updates [refreshError] on failure. On success the cache update flows into [uiState] via [BreedRepository.observeBreed]. */
     private fun refresh() {
         viewModelScope.launch {
             refreshError.value = null
-            when (val result = repository.refreshBreeds()) {
-                is AppResult.Success -> Unit // cache update flows into uiState
-                is AppResult.Failure -> refreshError.value = result.error
-            }
+            repository.refreshBreeds().onFailure { refreshError.value = it }
         }
     }
 
-    /** Fetches the breed photo. A failure degrades to the monogram avatar — it never replaces breed content with an error screen. */
+    /** Fetches the breed photo. A failure leaves [imageUrl] null so the header keeps the monogram avatar — it never replaces breed content with an error screen. */
     private fun loadImage() {
         viewModelScope.launch {
-            imageUrl.value = when (val result = repository.fetchBreedImageUrl(breedName)) {
-                is AppResult.Success -> result.value
-                is AppResult.Failure -> ""
-            }
+            repository.fetchBreedImageUrl(breedName).onSuccess { imageUrl.value = it }
         }
     }
 

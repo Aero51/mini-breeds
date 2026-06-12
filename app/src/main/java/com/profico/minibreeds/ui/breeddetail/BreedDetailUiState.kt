@@ -16,7 +16,7 @@ sealed interface BreedDetailUiState {
         val name: String,
         val subBreeds: List<String>,
         val isFavorite: Boolean,
-        /** Random photo of the breed: null while loading, empty when the fetch failed (header falls back to the monogram avatar). */
+        /** Random photo of the breed; null while loading or when the fetch failed (header falls back to the monogram avatar). */
         val imageUrl: String? = null,
     ) : BreedDetailUiState
 }

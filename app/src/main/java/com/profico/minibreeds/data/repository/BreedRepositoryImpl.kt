@@ -4,11 +4,12 @@ import android.util.Log
 import com.profico.minibreeds.core.AppError
 import com.profico.minibreeds.core.AppResult
 import com.profico.minibreeds.core.DispatcherProvider
+import com.profico.minibreeds.core.map
 import com.profico.minibreeds.core.onFailure
+import com.profico.minibreeds.core.onSuccess
 import com.profico.minibreeds.data.local.FavoritesDataSource
 import com.profico.minibreeds.data.remote.DogApiService
-import com.profico.minibreeds.data.remote.dto.BreedImageDto
-import com.profico.minibreeds.data.remote.dto.BreedsResponseDto
+import com.profico.minibreeds.data.remote.dto.DogResponseDto
 import com.profico.minibreeds.data.remote.safeApiCall
 import com.profico.minibreeds.domain.model.Breed
 import com.profico.minibreeds.domain.repository.BreedRepository
@@ -36,10 +37,15 @@ class BreedRepositoryImpl(
 
     override suspend fun refreshBreeds(): AppResult<List<Breed>> =
         withContext(dispatchers.io) {
-            val result = safeApiCall { api.getAllBreeds() }.toBreeds()
-            result
+            safeApiCall { api.getAllBreeds() }
+                .unwrap()
+                .map { breedMap ->
+                    breedMap
+                        .map { (name, subBreeds) -> Breed(name = name, subBreeds = subBreeds) }
+                        .sortedBy { it.name }
+                }
+                .onSuccess { breeds -> breedsCache.value = breeds }
                 .onFailure { error -> Log.w(TAG, "Breed refresh failed: $error") }
-                .also { if (it is AppResult.Success) breedsCache.value = it.value }
         }
 
     override fun observeBreed(name: String): Flow<Breed?> =
@@ -48,7 +54,7 @@ class BreedRepositoryImpl(
     override suspend fun fetchBreedImageUrl(breedName: String): AppResult<String> =
         withContext(dispatchers.io) {
             safeApiCall { api.getBreedImage(breedName) }
-                .toImageUrl()
+                .unwrap()
                 .onFailure { error -> Log.w(TAG, "Breed image fetch failed: $error") }
         }
 
@@ -58,28 +64,12 @@ class BreedRepositoryImpl(
         favoritesDataSource.toggle(breedName)
     }
 
-    /** Maps the raw DTO to a sorted list of domain [Breed] objects, or a [AppResult.Failure] if the API status field is not "success". */
-    private fun AppResult<BreedsResponseDto>.toBreeds(): AppResult<List<Breed>> =
+    /** Unwraps the envelope payload, or a [AppResult.Failure] if the API status field is not "success". */
+    private fun <T> AppResult<DogResponseDto<T>>.unwrap(): AppResult<T> =
         when (this) {
             is AppResult.Failure -> this
             is AppResult.Success ->
-                if (value.status != BreedsResponseDto.STATUS_SUCCESS) {
-                    AppResult.Failure(AppError.ApiStatus(value.status))
-                } else {
-                    AppResult.Success(
-                        value.message
-                            .map { (name, subBreeds) -> Breed(name = name, subBreeds = subBreeds) }
-                            .sortedBy { it.name },
-                    )
-                }
-        }
-
-    /** Unwraps the image URL, or a [AppResult.Failure] if the API status field is not "success". */
-    private fun AppResult<BreedImageDto>.toImageUrl(): AppResult<String> =
-        when (this) {
-            is AppResult.Failure -> this
-            is AppResult.Success ->
-                if (value.status != BreedImageDto.STATUS_SUCCESS) {
+                if (value.status != DogResponseDto.STATUS_SUCCESS) {
                     AppResult.Failure(AppError.ApiStatus(value.status))
                 } else {
                     AppResult.Success(value.message)

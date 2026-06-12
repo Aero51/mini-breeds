@@ -1,19 +1,18 @@
 package com.profico.minibreeds.data.remote
 
-import com.profico.minibreeds.data.remote.dto.BreedsResponseDto
+import com.profico.minibreeds.data.remote.dto.DogResponseDto
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class BreedsResponseDtoTest {
+class DogResponseDtoTest {
 
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
     @Test
-    fun `parses spec-shaped payload into breed map`() {
+    fun `parses spec-shaped breeds payload into breed map`() {
         val payload = """
             {
               "message": {
@@ -27,7 +26,7 @@ class BreedsResponseDtoTest {
             }
         """.trimIndent()
 
-        val dto = json.decodeFromString<BreedsResponseDto>(payload)
+        val dto = json.decodeFromString<DogResponseDto<Map<String, List<String>>>>(payload)
 
         assertEquals("success", dto.status)
         assertEquals(5, dto.message.size)
@@ -36,26 +35,46 @@ class BreedsResponseDtoTest {
     }
 
     @Test
+    fun `parses image payload into url string`() {
+        val payload = """{"message":"https://images.dog.ceo/breeds/akita/1.jpg","status":"success"}"""
+
+        val dto = json.decodeFromString<DogResponseDto<String>>(payload)
+
+        assertEquals("success", dto.status)
+        assertEquals("https://images.dog.ceo/breeds/akita/1.jpg", dto.message)
+    }
+
+    @Test
     fun `ignores unknown top-level keys`() {
         val payload = """{"message":{"akita":[]},"status":"success","extra":"ignored"}"""
 
-        val dto = json.decodeFromString<BreedsResponseDto>(payload)
+        val dto = json.decodeFromString<DogResponseDto<Map<String, List<String>>>>(payload)
 
         assertEquals(setOf("akita"), dto.message.keys)
     }
 
     @Test
-    fun `missing fields fall back to defaults`() {
-        val dto = json.decodeFromString<BreedsResponseDto>("{}")
+    fun `missing status falls back to empty string`() {
+        val dto = json.decodeFromString<DogResponseDto<Map<String, List<String>>>>(
+            """{"message":{"akita":[]}}""",
+        )
 
-        assertTrue(dto.message.isEmpty())
         assertEquals("", dto.status)
+    }
+
+    @Test
+    fun `missing message throws SerializationException`() {
+        assertThrows(SerializationException::class.java) {
+            json.decodeFromString<DogResponseDto<Map<String, List<String>>>>("{}")
+        }
     }
 
     @Test
     fun `malformed body throws SerializationException`() {
         assertThrows(SerializationException::class.java) {
-            json.decodeFromString<BreedsResponseDto>("""{"message":"not a map"}""")
+            json.decodeFromString<DogResponseDto<Map<String, List<String>>>>(
+                """{"message":"not a map"}""",
+            )
         }
     }
 }

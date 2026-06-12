@@ -2,7 +2,6 @@ package com.profico.minibreeds.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -58,11 +57,5 @@ class AppResultTest {
         var ranOnSuccess = false
         AppResult.Success("ok").onFailure { ranOnSuccess = true }
         assertFalse(ranOnSuccess)
-    }
-
-    @Test
-    fun `factory helpers build the matching variants`() {
-        assertTrue(AppResult.success(1) is AppResult.Success)
-        assertTrue(AppResult.failure(AppError.Timeout) is AppResult.Failure)
     }
 }

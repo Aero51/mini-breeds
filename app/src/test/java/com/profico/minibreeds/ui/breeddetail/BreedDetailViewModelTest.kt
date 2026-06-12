@@ -10,6 +10,7 @@ import com.profico.minibreeds.testutil.MainDispatcherRule
 import com.profico.minibreeds.ui.navigation.BreedDetailRoute
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -123,7 +124,7 @@ class BreedDetailViewModelTest {
     }
 
     @Test
-    fun `failed image fetch degrades to empty url with content intact`() = runTest {
+    fun `failed image fetch keeps a null url with content intact`() = runTest {
         val repository = FakeBreedRepository(initialCache = breeds).apply {
             imageResult = AppResult.Failure(AppError.Timeout)
         }
@@ -132,12 +133,11 @@ class BreedDetailViewModelTest {
 
         vm.uiState.test {
             var state = awaitItem()
-            while (state !is BreedDetailUiState.Content || state.imageUrl == null) {
-                state = awaitItem()
-            }
-            assertEquals("", state.imageUrl)
+            while (state !is BreedDetailUiState.Content) state = awaitItem()
+            assertNull(state.imageUrl)
             assertEquals("bulldog", state.name)
             assertEquals(listOf("boston", "french"), state.subBreeds)
+            expectNoEvents()
         }
     }
 

@@ -43,8 +43,9 @@ class BreedListViewModel(
                 is LoadState.Loading -> BreedListUiState.Loading
                 is LoadState.Failed -> BreedListUiState.Error(load.error)
                 is LoadState.Loaded -> {
+                    val trimmedQuery = query.trim()
                     val rows = load.breeds
-                        .filter { it.name.contains(query.trim(), ignoreCase = true) }
+                        .filter { it.name.contains(trimmedQuery, ignoreCase = true) }
                         .map { breed ->
                             BreedRowUi(
                                 name = breed.name,
