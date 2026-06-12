@@ -5,6 +5,32 @@ list of dog breeds from `https://dog.ceo/api/breeds/list/all`, with real-time se
 and DataStore-persisted favorites. See `README.md` for the architecture and the
 rationale behind every design decision (no use-case layer, Koin over Hilt, etc.).
 
+## The assignment brief (what this app is graded against)
+
+"The Mini-Breeds App" — junior Android technical assessment. Constraints and
+scope, condensed from the brief; do not add features beyond it:
+
+- **100% Jetpack Compose; XML view hierarchies/layout files strictly
+  prohibited.** Layout/look is free-form — the graded priorities are
+  architecture, code cleanliness, and functionality, explicitly *not*
+  pixel-perfect styling.
+- **Core:** fetch breeds from `GET https://dog.ceo/api/breeds/list/all`
+  (Retrofit or Ktor); show breed names in a scrollable `LazyColumn` with
+  every row clickable → detail screen showing the selected breed's name,
+  with a clear back mechanism; loading indicator while fetching and a
+  user-friendly error fallback on failure.
+- **Payload shape:** root keys of `message` are the breed names; values are
+  sub-breed lists. `status` is `"success"` on a healthy response.
+- **Guardrails:** MVVM (UI fully split from business logic), standard
+  Compose Navigation, coroutines + `viewModelScope` (no network on the main
+  thread).
+- **Bonus criteria (both implemented):** real-time local search via a
+  `TextField` above the list; per-row favorites toggle persisted locally.
+- **Evaluation matrix:** Compose mastery (idiomatic composables,
+  `remember`/state, fluid lists), architecture & routing (clean MVVM
+  decoupling, robust navigation), error resilience (no crashes on network
+  failures or missing-network flags).
+
 ## Commands (Windows)
 
 ```
@@ -13,6 +39,19 @@ rationale behind every design decision (no use-case layer, Koin over Hilt, etc.)
 .\gradlew.bat :app:connectedDebugAndroidTest   # Compose UI tests (emulator required)
 .\gradlew.bat :app:lintDebug :app:assembleRelease
 ```
+
+## Build prerequisites
+
+- JDK 17+ on `PATH`/`JAVA_HOME`; Gradle itself comes from the wrapper.
+- Android SDK with platform 36 installed, located via `local.properties`
+  (`sdk.dir=...`) or `ANDROID_HOME`. **`local.properties` is gitignored** —
+  fresh clones *and new git worktrees* must provide it or every build fails
+  with "SDK location not found".
+- An emulator or device (API 26+, the minSdk) is needed only for
+  `connectedDebugAndroidTest`, `installDebug`/`installRelease`, and manual
+  verification; everything else runs on the JVM.
+- The first build downloads dependencies — if that fails with `PKIX path
+  building failed` on this machine, see the Avast note at the bottom.
 
 ## Architecture in one paragraph
 
