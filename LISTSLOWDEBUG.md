@@ -32,8 +32,8 @@ common fixes apply here because the code is already optimal:
 
 | Practice | Where |
 |---|---|
-| `key = { it.name }` in `LazyColumn` | `BreedListScreen.kt:178` |
-| `animateItem()` on each card | `BreedListScreen.kt:183` |
+| `key = { it.name }` in `LazyColumn` | `BreedListScreen.kt` (`BreedList`) |
+| `animateItem()` on each card | `BreedListScreen.kt` (`BreedList`) |
 | `remember(name, darkTheme)` around `Color.hsl()` | `BreedAvatar.kt` |
 | `collectAsStateWithLifecycle()` (not `collectAsState()`) | Both ViewModels |
 | No work on the UI thread | `withContext(dispatchers.io)` in `BreedRepositoryImpl` |

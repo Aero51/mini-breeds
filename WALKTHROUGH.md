@@ -330,6 +330,16 @@ UI tests both understand it.
 **Why this approach:** Both the list rows and the detail toolbar show the
 same heart; one composable keeps behavior and accessibility consistent.
 
+### `String.capitalized()` (in `Strings.kt`)
+
+**What it does:** Upper-cases the first character, turning lowercase API
+breed names ("bulldog") into display titles ("Bulldog"). Used by the list
+card, the detail title, and the sub-breed cards.
+
+**Why this approach:** The same `replaceFirstChar` idiom appeared in three
+composables; three call sites is the threshold where naming the operation
+once beats repeating it.
+
 ---
 
 ## `ui/navigation` — moving between screens
