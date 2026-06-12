@@ -472,12 +472,11 @@ navigable — sub-breeds have no further data in this API). `BreedDetailTestTags
 again holds test IDs.
 
 **Why Coil for images:** Built Compose-first with `AsyncImage`, handles
-caching/placeholdering for free. Glide/Picasso predate Compose and need
-adapters. (Honest note: Coil currently runs with its own default
-`ImageLoader` — it is *not* wired to the app's OkHttpClient singleton, so the
-10-second timeouts and debug logging don't apply to image requests. Wiring it
-via `SingletonImageLoader.Factory` on the Application is a known, deliberate
-to-do sketched in IMAGES.md.)
+caching/placeholdering for free, and is wired (via
+`SingletonImageLoader.Factory` on `MiniBreedsApp`) to reuse the app's
+existing OkHttpClient — so image downloads share the API client's connection
+pool, timeouts, and debug logging instead of running on a hidden second HTTP
+client. Glide/Picasso predate Compose and need adapters.
 
 ---
 
@@ -487,7 +486,9 @@ to-do sketched in IMAGES.md.)
 
 **What it does:** Runs once at process start, before any screen: starts Koin
 (with the Android context and the three modules) so that by the time any
-ViewModel asks for a dependency, the graph is ready.
+ViewModel asks for a dependency, the graph is ready. It also implements
+Coil's `SingletonImageLoader.Factory`, building the app-wide `ImageLoader`
+on the Koin-provided OkHttpClient (see the detail-screen section for why).
 
 ### `MainActivity`
 

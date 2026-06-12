@@ -562,6 +562,8 @@ this one is greenfield.
   integration bugs live. MockWebServer exercises real bytes through the real
   stack.
 - **Coil over Glide/Picasso** — Compose-first (`AsyncImage`),
-  coroutine-based. Glide/Picasso predate Compose and need adapter layers.
-  Known gap: Coil currently uses its own default `ImageLoader` rather than
-  the app's OkHttpClient singleton (see IMAGES.md for the proposed wiring).
+  coroutine-based, and wired through `SingletonImageLoader.Factory` to the
+  app's OkHttpClient singleton (one connection pool, one timeout policy,
+  image requests visible in the debug log). The alternative — Coil's default
+  ServiceLoader-discovered client — works silently but duplicates HTTP
+  infrastructure. Glide/Picasso predate Compose and need adapter layers.

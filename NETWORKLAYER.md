@@ -317,10 +317,13 @@ traffic leaves the test process.
 
 The detail screen's breed photo is rendered by Coil 3 (`AsyncImage`). The
 repository only fetches the photo's **URL** through the Retrofit stack above;
-downloading and caching the image bytes is Coil's job. The
-`coil-network-okhttp` artifact registers its network fetcher automatically via
-ServiceLoader, so no custom `ImageLoader` or DI wiring exists — Coil's default
-memory and disk caches apply.
+downloading and caching the image bytes is Coil's job. `MiniBreedsApp`
+implements `SingletonImageLoader.Factory` and hands Coil's
+`OkHttpNetworkFetcherFactory` the Koin-provided `OkHttpClient`, so image
+downloads share the API client's connection pool, timeouts, and debug logging
+interceptor — in debug builds the `images.dog.ceo` requests are visible in
+logcat alongside the API calls. Coil's default memory and disk caches apply
+on top.
 
 ---
 

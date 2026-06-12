@@ -89,9 +89,9 @@ implementation(libs.coil.network.okhttp)
 
 `coil-network-okhttp` makes Coil fetch over OkHttp. Note: out of the box it
 creates its **own** `OkHttpClient` — sharing the `networkModule` singleton
-(timeouts, logging interceptor) requires the explicit `SingletonImageLoader`
-wiring shown in the design decisions below, which the current implementation
-does not yet apply.
+(timeouts, logging interceptor) requires the explicit
+`SingletonImageLoader.Factory` wiring on `MiniBreedsApp`, shown in the design
+decisions below.
 
 ---
 
@@ -256,24 +256,23 @@ avatar. The breed name, sub-breeds, and favorite toggle all remain fully
 functional. This ensures a broken CDN or slow image server never degrades
 the core experience.
 
-### Coil could reuse the existing `OkHttpClient` (proposed, not yet applied)
+### Coil reuses the existing `OkHttpClient`
 
 By passing the Koin-provided `OkHttpClient` to Coil's `OkHttpNetworkFetcherFactory`,
-image requests would share the same connection pool, timeouts, and debug
-logging interceptor as API calls, instead of Coil's own default client. The
-current implementation skips this wiring — `AsyncImage` runs on Coil's
-default `ImageLoader` — which is acceptable at one image per detail visit but
-is the first thing to add if image traffic grows:
+image requests share the same connection pool, timeouts, and debug logging
+interceptor as API calls. No second HTTP client is created. Implemented on
+`MiniBreedsApp`, which Coil consults lazily on the first image request:
 
 ```kotlin
-// di/AppModules.kt — inside singleOf(::SingletonImageLoader) or Coil builder
-SingletonImageLoader.setSafe {
-    ImageLoader.Builder(it)
-        .networkCachePolicy(CachePolicy.ENABLED)
-        .components {
-            add(OkHttpNetworkFetcherFactory(callFactory = { get() }))
-        }
-        .build()
+// MiniBreedsApp.kt
+class MiniBreedsApp : Application(), SingletonImageLoader.Factory {
+
+    override fun newImageLoader(context: PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = { getKoin().get<OkHttpClient>() }))
+            }
+            .build()
 }
 ```
 
