@@ -472,9 +472,12 @@ navigable — sub-breeds have no further data in this API). `BreedDetailTestTags
 again holds test IDs.
 
 **Why Coil for images:** Built Compose-first with `AsyncImage`, handles
-caching/placeholdering for free, and is configured (in `MiniBreedsApp`) to
-reuse the app's existing OkHttpClient. Glide/Picasso predate Compose and need
-adapters.
+caching/placeholdering for free. Glide/Picasso predate Compose and need
+adapters. (Honest note: Coil currently runs with its own default
+`ImageLoader` — it is *not* wired to the app's OkHttpClient singleton, so the
+10-second timeouts and debug logging don't apply to image requests. Wiring it
+via `SingletonImageLoader.Factory` on the Application is a known, deliberate
+to-do sketched in IMAGES.md.)
 
 ---
 

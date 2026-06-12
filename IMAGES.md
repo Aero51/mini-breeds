@@ -87,9 +87,11 @@ implementation(libs.coil.compose)
 implementation(libs.coil.network.okhttp)
 ```
 
-`coil-network-okhttp` reuses the existing `OkHttpClient` singleton from
-`networkModule`, so the same 10-second timeouts and debug logging interceptor
-apply to image requests automatically.
+`coil-network-okhttp` makes Coil fetch over OkHttp. Note: out of the box it
+creates its **own** `OkHttpClient` — sharing the `networkModule` singleton
+(timeouts, logging interceptor) requires the explicit `SingletonImageLoader`
+wiring shown in the design decisions below, which the current implementation
+does not yet apply.
 
 ---
 
@@ -254,11 +256,14 @@ avatar. The breed name, sub-breeds, and favorite toggle all remain fully
 functional. This ensures a broken CDN or slow image server never degrades
 the core experience.
 
-### Coil reuses the existing `OkHttpClient`
+### Coil could reuse the existing `OkHttpClient` (proposed, not yet applied)
 
 By passing the Koin-provided `OkHttpClient` to Coil's `OkHttpNetworkFetcherFactory`,
-image requests share the same connection pool, timeouts, and debug logging
-interceptor as API calls. No second HTTP client is created.
+image requests would share the same connection pool, timeouts, and debug
+logging interceptor as API calls, instead of Coil's own default client. The
+current implementation skips this wiring — `AsyncImage` runs on Coil's
+default `ImageLoader` — which is acceptable at one image per detail visit but
+is the first thing to add if image traffic grows:
 
 ```kotlin
 // di/AppModules.kt — inside singleOf(::SingletonImageLoader) or Coil builder
