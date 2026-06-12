@@ -17,3 +17,4 @@ local.properties
 
 # Local dev artifacts
 /emulator_screen.png
+*.bak
