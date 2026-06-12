@@ -51,8 +51,9 @@ typed navigation routes). DI is Koin (`di\AppModules.kt`), started in
 
 - **Scroll/animation performance complaints must be reproduced on the release
   build** (`installRelease`; it is R8-optimized and debug-signed for local
-  installs). Debug Compose runs without AOT/baseline profiles and is several
-  times slower — not a code problem.
+  installs). ART withholds its optimizations from debuggable builds and debug
+  APKs skip R8, making them several times slower — not a code problem
+  (see LISTSLOWDEBUG.md).
 - `android.r8.gradual.support=true` in `gradle.properties` is required by AGP 9
   for `optimization.enable=true`; don't remove it.
 - **Warnings are errors.** Kotlin compiles with `allWarningsAsErrors` (all

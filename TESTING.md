@@ -135,10 +135,12 @@ a force-stop and the airplane-mode error → Retry → recovery cycle.
 ## 5. Judging scroll performance
 
 Always evaluate scrolling and animations on the **release** build. Debug builds
-of Compose apps are not representative: composition runs with runtime checks
-and without AOT compilation or baseline profiles, which makes lists feel
-several times slower than what users get. The release build type is R8-optimized
-and debug-signed precisely so it can be installed locally:
+of Compose apps are not representative: ART withholds its strongest
+optimizations from debuggable apps (no install-time AOT, restricted JIT) and
+debug APKs skip R8, which makes lists feel several times slower than what
+users get — see `LISTSLOWDEBUG.md` for the full analysis. The release build
+type is R8-optimized and debug-signed precisely so it can be installed
+locally:
 
 ```
 .\gradlew.bat :app:installRelease
