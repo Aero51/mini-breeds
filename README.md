@@ -18,6 +18,11 @@ hearts, animated list reordering while filtering, and illustrated empty/error st
 |---|---|
 | ![Breed list](docs/screenshot_list.png) | ![Breed detail](docs/screenshot_detail.png) |
 
+**New to the codebase?** [WALKTHROUGH.md](WALKTHROUGH.md) explains every class
+and function in plain language. [ALTERNATIVES.md](ALTERNATIVES.md) goes deeper
+on each decision: the alternative implementations considered, their honest
+trade-offs, and the deciding factor.
+
 ## Tech stack
 
 | Concern | Choice |
@@ -123,11 +128,11 @@ testable. No debounce — the filter is local and instant.
 See [TESTING.md](TESTING.md) for how to run each suite, single-test invocation,
 report locations, and the manual verification checklist.
 
-Unit tests — 61 across 9 classes (`app\src\test`, run with
+Unit tests — 62 across 9 classes (`app\src\test`, run with
 `.\gradlew.bat :app:testDebugUnitTest`):
 
 - `AppResultTest` — `map`/`onSuccess`/`onFailure` fire on the right variant
-- `BreedsResponseDtoTest` — JSON parsing, unknown-key tolerance, malformed input
+- `DogResponseDtoTest` — JSON parsing of the generic envelope (map and string payloads), unknown-key tolerance, missing/malformed input
 - `SafeApiCallTest` — each exception type maps to the expected `AppError`; cancellation rethrown
 - `BreedRepositoryImplTest` — real Retrofit/OkHttp against MockWebServer: success mapping/sorting/caching, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout; image fetch success / API error / 404
 - `DataStoreFavoritesDataSourceTest` — real JVM DataStore: toggle on/off, persistence, defaults, corrupt-store degradation

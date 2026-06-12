@@ -18,17 +18,17 @@ Design decisions sections in `README.md`.
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
-61 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
+62 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
 
 | Class | What it proves |
 |---|---|
-| `core\AppResultTest` | `map`/`onSuccess`/`onFailure` fire on the right variant and pass the other through unchanged; factory helpers build the matching variants |
-| `data\remote\BreedsResponseDtoTest` | Spec-shaped JSON parses; unknown keys ignored; malformed JSON throws `SerializationException` |
+| `core\AppResultTest` | `map`/`onSuccess`/`onFailure` fire on the right variant and pass the other through unchanged |
+| `data\remote\DogResponseDtoTest` | Spec-shaped JSON parses for both map and string payloads; unknown keys ignored; missing `status` defaults to `""`; missing `message` or malformed JSON throws `SerializationException` |
 | `data\remote\SafeApiCallTest` | Every exception type maps to the right `AppError`; `CancellationException` is rethrown |
 | `data\repository\BreedRepositoryImplTest` | Real Retrofit/OkHttp/Json against MockWebServer: success mapping/sorting/caching, empty-but-successful body, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout; breed-image fetch success, `"status":"error"`, and HTTP 404 |
 | `data\local\DataStoreFavoritesDataSourceTest` | Real JVM DataStore: toggle on/off, persistence across instances, empty default; a corrupt (`IOException`) store degrades to empty while non-IO failures propagate |
 | `ui\breedlist\BreedListViewModelTest` | Turbine: Loading→Content, Error→retry→Content, case-insensitive + trimmed filtering, empty-result flag, genuinely-empty list isn't flagged as no-results, favorites reactivity |
-| `ui\breeddetail\BreedDetailViewModelTest` | Warm-cache content; cold cache triggers refresh; refresh failure → Error; favorite toggle; missing nav argument fails fast; photo URL lands in Content on success and degrades to empty (monogram fallback) on failure |
+| `ui\breeddetail\BreedDetailViewModelTest` | Warm-cache content; cold cache triggers refresh; refresh failure → Error; favorite toggle; missing nav argument fails fast; photo URL lands in Content on success and stays null (monogram fallback) on failure |
 | `ui\common\UiErrorTest` | Each `AppError` maps to its own distinct string resource; `Http` carries the status code |
 | `di\KoinModulesTest` | The Koin graph resolves (Koin `verify()`) |
 
@@ -38,9 +38,11 @@ HTML report: `app\build\reports\tests\testDebugUnitTest\index.html`
 DataStore tests that write to disk twice in a row fail with
 `IOException: Unable to rename …preferences_pb.tmp` — the shield scans the
 freshly written file and holds it open, so DataStore's atomic rename fails.
-This is environmental, not an app or test bug (the same tests are green with
-Avast paused and on other machines). Add an Avast exception for
-`%LOCALAPPDATA%\Temp` or pause File Shield while running unit tests.
+This is environmental, not an app or test bug (the same tests are green on
+machines without Avast). **Note (verified 2026-06-12): Avast's "pause
+protection" does NOT stop File Shield** — the failures persist while paused.
+Disable File Shield itself (Protection → Core Shields → File Shield) or add
+an Avast exception for `%LOCALAPPDATA%\Temp`, where the tests write.
 
 Run a single class or test:
 
@@ -105,8 +107,8 @@ Happy path (needs working internet from the emulator — see caveat below):
 1. Launch → loading spinner → alphabetical breed list appears.
 2. Type in the search field → list filters in real time, case-insensitive;
    nonsense query shows "No breeds match your search"; the ✕ icon clears it.
-3. Tap the star on a breed → it fills; restart the app (swipe away, relaunch) →
-   the star is still filled (DataStore persistence).
+3. Tap the heart on a breed → it fills with a spring bounce; restart the app
+   (swipe away, relaunch) → the heart is still filled (DataStore persistence).
 4. Tap a breed with sub-breeds (e.g. *bulldog*) → detail screen shows its name
    in the top bar and sub-breed cards; a breed without sub-breeds shows
    "This breed has no sub-breeds".
@@ -121,8 +123,14 @@ Error handling:
 **Caveat on this dev machine:** Avast's Web Shield HTTPS scanning breaks TLS
 from the emulator (certificate trust-anchor failures), so step 1 shows the
 error screen instead. That is the app behaving correctly. To run the happy
-path here, temporarily disable Avast → Protection → Core Shields → Web Shield →
-"Enable HTTPS scanning", or use a physical device. Details in `CLAUDE.md`.
+path here, pause Avast protection or disable Avast → Protection → Core
+Shields → Web Shield → "Enable HTTPS scanning", or use a physical device.
+Pausing **does** fix this (unlike the File Shield issue in §1, which pausing
+does not fix). Details in `CLAUDE.md`.
+
+This checklist was last completed in full on 2026-06-12 (Pixel_9a emulator,
+Avast paused): all seven steps passed, including favorite persistence across
+a force-stop and the airplane-mode error → Retry → recovery cycle.
 
 ## 5. Judging scroll performance
 
@@ -145,9 +153,8 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
 ```
 
-The JVM unit suite (`:app:testDebugUnitTest`, 61 tests) was last run on
-2026-06-11: 59 green, plus the two environment-dependent DataStore failures
-described in §1 (Avast File Shield; not app bugs). Lint and `assembleRelease`
-verified green on 2026-06-11; the instrumented suite (20 tests) was last
-verified green on 2026-06-10, before the two detail-screen photo tests were
-added — rerun it with a device attached.
+All four were last verified on 2026-06-12: the JVM unit suite (62 tests) ran
+60 green plus the two environment-dependent DataStore failures described in
+§1 (Avast File Shield; not app bugs); lint and `assembleRelease` green; the
+instrumented suite **20/20 green** on the Pixel_9a emulator. The manual
+checklist in §4 was also completed in full the same day.

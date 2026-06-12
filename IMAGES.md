@@ -93,13 +93,16 @@ apply to image requests automatically.
 
 ---
 
-### 2. New DTO — `BreedImageDto`
+### 2. DTO — the generic `DogResponseDto<T>` envelope
+
+The image endpoint returns the same `message` + `status` envelope as the
+breeds endpoint, so the shared generic DTO covers it with `T = String`:
 
 ```kotlin
-// data/remote/dto/BreedImageDto.kt
+// data/remote/dto/DogResponseDto.kt
 @Serializable
-data class BreedImageDto(
-    val message: String = "",
+data class DogResponseDto<T>(
+    val message: T,
     val status: String = "",
 )
 ```
@@ -110,7 +113,7 @@ data class BreedImageDto(
 
 ```kotlin
 @GET("api/breed/{breed}/images/random")
-suspend fun getBreedImage(@Path("breed") breed: String): BreedImageDto
+suspend fun getBreedImage(@Path("breed") breed: String): DogResponseDto<String>
 ```
 
 ---
@@ -128,26 +131,29 @@ Implementation in `BreedRepositoryImpl`:
 ```kotlin
 override suspend fun fetchBreedImageUrl(breedName: String): AppResult<String> =
     withContext(dispatchers.io) {
-        safeApiCall { api.getBreedImage(breedName) }.map { it.message }
+        safeApiCall { api.getBreedImage(breedName) }
+            .unwrap()
+            .onFailure { error -> Log.w(TAG, "Breed image fetch failed: $error") }
     }
 ```
 
 `safeApiCall` covers all failure cases the same way it does for breed
-fetches — no extra error handling needed.
+fetches, and the shared `unwrap()` performs the same `"status"` field check —
+no extra error handling needed.
 
 ---
 
 ### 5. Update `BreedDetailUiState.Content`
 
-Add a nullable `imageUrl` field. `null` means the image is still loading;
-an empty string signals a failed fetch so the screen can fall back gracefully.
+Add a nullable `imageUrl` field. `null` means no photo is available — still
+loading or the fetch failed — so the screen falls back gracefully either way.
 
 ```kotlin
 data class Content(
     val name: String,
     val subBreeds: List<String>,
     val isFavorite: Boolean,
-    val imageUrl: String? = null,   // null = loading, "" = failed / unavailable
+    val imageUrl: String? = null,   // null = loading / failed / unavailable
 ) : BreedDetailUiState
 ```
 
@@ -164,17 +170,13 @@ a full error.
 private fun refresh() {
     viewModelScope.launch {
         refreshError.value = null
-        when (val result = repository.refreshBreeds()) {
-            is AppResult.Success -> Unit
-            is AppResult.Failure -> refreshError.value = result.error
-        }
+        repository.refreshBreeds().onFailure { refreshError.value = it }
     }
+}
+
+private fun loadImage() {
     viewModelScope.launch {
-        val result = repository.fetchBreedImageUrl(breedName)
-        imageUrl.value = when (result) {
-            is AppResult.Success -> result.value
-            is AppResult.Failure -> ""
-        }
+        repository.fetchBreedImageUrl(breedName).onSuccess { imageUrl.value = it }
     }
 }
 
@@ -247,7 +249,7 @@ Start with one image; the architecture supports upgrading later.
 
 ### Image fetch is independent from breed data fetch
 
-A failed image fetch sets `imageUrl = ""` and falls back to the monogram
+A failed image fetch leaves `imageUrl` null and falls back to the monogram
 avatar. The breed name, sub-breeds, and favorite toggle all remain fully
 functional. This ensures a broken CDN or slow image server never degrades
 the core experience.

@@ -80,3 +80,8 @@ its shields are active. None of them are app bugs — don't debug app code for t
    them open, so the two `DataStoreFavoritesDataSourceTest` tests that write
    twice in a row fail with `IOException: Unable to rename …preferences_pb.tmp`.
    See TESTING.md §1.
+
+Avast's **"pause protection" fixes #1 but NOT #3** (verified 2026-06-12: the
+emulator's live network works while paused, but the two DataStore test
+failures persist). For #3, disable File Shield itself or add an exception for
+`%LOCALAPPDATA%\Temp`.

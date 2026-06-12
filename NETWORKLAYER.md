@@ -106,10 +106,10 @@ It wires the `Json` singleton as the body deserializer, so the same
 ```kotlin
 interface DogApiService {
     @GET("api/breeds/list/all")
-    suspend fun getAllBreeds(): BreedsResponseDto
+    suspend fun getAllBreeds(): DogResponseDto<Map<String, List<String>>>
 
     @GET("api/breed/{breed}/images/random")
-    suspend fun getBreedImage(@Path("breed") breed: String): BreedImageDto
+    suspend fun getBreedImage(@Path("breed") breed: String): DogResponseDto<String>
 }
 ```
 
@@ -123,12 +123,15 @@ interface DogApiService {
 
 ---
 
-## Wire-format DTOs — `BreedsResponseDto` and `BreedImageDto`
+## Wire-format DTO — `DogResponseDto<T>`
+
+Every dog.ceo endpoint returns the same envelope — a `message` payload plus a
+`status` field — so one generic DTO covers them all:
 
 ```kotlin
 @Serializable
-data class BreedsResponseDto(
-    val message: Map<String, List<String>> = emptyMap(),
+data class DogResponseDto<T>(
+    val message: T,
     val status: String = "",
 ) {
     companion object {
@@ -137,7 +140,8 @@ data class BreedsResponseDto(
 }
 ```
 
-Maps directly to the API's JSON shape:
+For `getAllBreeds`, `T` is `Map<String, List<String>>` and maps directly to
+the API's JSON shape:
 
 ```json
 {
@@ -150,21 +154,13 @@ Maps directly to the API's JSON shape:
 ```
 
 - `message` keys are breed names; values are (possibly empty) sub-breed lists.
-- Default values (`emptyMap()`, `""`) let `coerceInputValues` handle
-  missing or null fields without a crash.
+  For `getBreedImage`, `T` is `String` — the URL of one random photo.
+- `message` has no default, so a body without one fails parsing and surfaces
+  as `AppError.Serialization` instead of masquerading as an empty result;
+  a missing `status` falls back to `""` (which then fails the status check).
 - This DTO lives in `data/remote/dto/` and never leaves the data layer —
-  it is converted to the domain `Breed` model in `BreedRepositoryImpl`.
-
-`BreedImageDto` follows the same conventions for the image endpoint —
-`message` is a single URL string instead of a map:
-
-```kotlin
-@Serializable
-data class BreedImageDto(
-    val message: String = "",
-    val status: String = "",
-)
-```
+  it is unwrapped and converted to the domain `Breed` model in
+  `BreedRepositoryImpl`.
 
 ---
 
@@ -211,7 +207,11 @@ the network and the ViewModels and handles three things:
 ```kotlin
 override suspend fun refreshBreeds(): AppResult<List<Breed>> =
     withContext(dispatchers.io) {
-        safeApiCall { api.getAllBreeds() }.toBreeds()
+        safeApiCall { api.getAllBreeds() }
+            .unwrap()
+            .map { ... }   // DTO payload → sorted List<Breed>
+            .onSuccess { breeds -> breedsCache.value = breeds }
+            .onFailure { error -> Log.w(TAG, "Breed refresh failed: $error") }
     }
 ```
 
@@ -221,29 +221,32 @@ substitute `TestCoroutineDispatcher`.
 
 ### 2. DTO → domain mapping
 
-`toBreeds()` converts the raw DTO after `safeApiCall` returns:
+`unwrap()` validates the envelope after `safeApiCall` returns:
 
 ```kotlin
 // check the API's own status field even on HTTP 2xx
-if (value.status != BreedsResponseDto.STATUS_SUCCESS) {
-    AppResult.Failure(AppError.ApiStatus(value.status))
-} else {
-    AppResult.Success(
-        value.message
-            .map { (name, subBreeds) -> Breed(name = name, subBreeds = subBreeds) }
-            .sortedBy { it.name }
-    )
-}
+private fun <T> AppResult<DogResponseDto<T>>.unwrap(): AppResult<T> =
+    when (this) {
+        is AppResult.Failure -> this
+        is AppResult.Success ->
+            if (value.status != DogResponseDto.STATUS_SUCCESS) {
+                AppResult.Failure(AppError.ApiStatus(value.status))
+            } else {
+                AppResult.Success(value.message)
+            }
+    }
 ```
 
-- An `"status": "error"` body becomes `AppError.ApiStatus` instead of
-  silently-empty content.
-- Breeds are **sorted alphabetically** by name at this step so the list is
-  always in a consistent order regardless of the API's map iteration order.
-- `toImageUrl()` does the same status check for `fetchBreedImageUrl()` and
-  unwraps the URL string. Image fetches are **not cached** in the repository —
-  each call may return a different random photo; Coil's own memory/disk cache
-  prevents re-downloading the same URL.
+- A `"status": "error"` body becomes `AppError.ApiStatus` instead of
+  silently-empty content. Being generic, the same function serves both
+  endpoints.
+- `refreshBreeds()` then uses `AppResult.map` to turn the unwrapped breed map
+  into domain `Breed` objects, **sorted alphabetically** by name so the list
+  is always in a consistent order regardless of the API's map iteration order.
+- `fetchBreedImageUrl()` just unwraps — the payload already is the URL string.
+  Image fetches are **not cached** in the repository — each call may return a
+  different random photo; Coil's own memory/disk cache prevents re-downloading
+  the same URL.
 
 ### 3. In-memory cache
 
@@ -275,10 +278,10 @@ safeApiCall { api.getAllBreeds() }
 GET https://dog.ceo/api/breeds/list/all
         │
         ▼
-BreedsResponseDto  (kotlinx.serialization)
+DogResponseDto<Map<String, List<String>>>  (kotlinx.serialization)
         │
         ▼
-.toBreeds()  →  AppResult<List<Breed>>
+.unwrap().map { … }  →  AppResult<List<Breed>>
         │
         ▼
 breedsCache.value = list       (on Success)
@@ -300,7 +303,7 @@ with actual bytes.
 
 | Test class | Scenarios covered |
 |---|---|
-| `BreedsResponseDtoTest` | Valid JSON parsing, unknown-key tolerance, malformed input |
+| `DogResponseDtoTest` | Valid JSON parsing (map and string payloads), unknown-key tolerance, missing/malformed input |
 | `SafeApiCallTest` | Each exception type → correct `AppError`; `CancellationException` rethrown |
 | `BreedRepositoryImplTest` | Success mapping + sort order + cache update; HTTP 500 → `Http(500)`; garbage body → `Serialization`; `"status":"error"` → `ApiStatus`; connection refused → `NoConnection`; timeout → `Timeout`; image fetch success / `"status":"error"` / HTTP 404 |
 
