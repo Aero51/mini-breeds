@@ -18,11 +18,11 @@ Design decisions sections in `README.md`.
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
-56 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
+55 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
 
 | Class | What it proves |
 |---|---|
-| `core\AppResultTest` | `map`/`onSuccess`/`onFailure` fire on the right variant and pass the other through unchanged; factory helpers build the matching variants |
+| `core\AppResultTest` | `map`/`onSuccess`/`onFailure` fire on the right variant and pass the other through unchanged |
 | `data\remote\BreedsResponseDtoTest` | Spec-shaped JSON parses; unknown keys ignored; malformed JSON throws `SerializationException` |
 | `data\remote\SafeApiCallTest` | Every exception type maps to the right `AppError`; `CancellationException` is rethrown |
 | `data\repository\BreedRepositoryImplTest` | Real Retrofit/OkHttp/Json against MockWebServer: success mapping/sorting/caching, empty-but-successful body, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout |
@@ -33,6 +33,16 @@ Design decisions sections in `README.md`.
 | `di\KoinModulesTest` | The Koin graph resolves (Koin `verify()`) |
 
 HTML report: `app\build\reports\tests\testDebugUnitTest\index.html`
+
+**Caveat on this dev machine:** with Avast's File Shield active, the two
+DataStore tests that write to disk twice in a row fail with
+`IOException: Unable to rename …preferences_pb.tmp` — the shield scans the
+freshly written file and holds it open, so DataStore's atomic rename fails.
+This is environmental, not an app or test bug (the same tests are green on
+machines without Avast). **Note (verified 2026-06-12): Avast's "pause
+protection" does NOT stop File Shield** — the failures persist while paused.
+Disable File Shield itself (Protection → Core Shields → File Shield) or add
+an Avast exception for `%LOCALAPPDATA%\Temp`, where the tests write.
 
 Run a single class or test:
 
@@ -97,8 +107,8 @@ Happy path (needs working internet from the emulator — see caveat below):
 1. Launch → loading spinner → alphabetical breed list appears.
 2. Type in the search field → list filters in real time, case-insensitive;
    nonsense query shows "No breeds match your search"; the ✕ icon clears it.
-3. Tap the star on a breed → it fills; restart the app (swipe away, relaunch) →
-   the star is still filled (DataStore persistence).
+3. Tap the heart on a breed → it fills with a spring bounce; restart the app
+   (swipe away, relaunch) → the heart is still filled (DataStore persistence).
 4. Tap a breed with sub-breeds (e.g. *bulldog*) → detail screen shows its name
    in the top bar and sub-breed cards; a breed without sub-breeds shows
    "This breed has no sub-breeds".
@@ -113,8 +123,10 @@ Error handling:
 **Caveat on this dev machine:** Avast's Web Shield HTTPS scanning breaks TLS
 from the emulator (certificate trust-anchor failures), so step 1 shows the
 error screen instead. That is the app behaving correctly. To run the happy
-path here, temporarily disable Avast → Protection → Core Shields → Web Shield →
-"Enable HTTPS scanning", or use a physical device. Details in `CLAUDE.md`.
+path here, pause Avast protection or disable Avast → Protection → Core
+Shields → Web Shield → "Enable HTTPS scanning", or use a physical device.
+Pausing **does** fix this (unlike the File Shield issue in §1, which pausing
+does not fix). Details in `CLAUDE.md`.
 
 ## 5. Judging scroll performance
 
@@ -137,6 +149,8 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
 ```
 
-The JVM unit suite (`:app:testDebugUnitTest`, 56 tests) is green as of
-2026-06-10. The lint, instrumented, and release tasks were last verified green
-on 2026-06-10 and are unaffected by the unit-test-only additions since.
+Last verified on 2026-06-12: the JVM unit suite (55 tests) ran 53 green plus
+the two environment-dependent DataStore failures described in §1 (Avast File
+Shield; not app bugs); lint and `assembleRelease` green. The instrumented
+suite (18 tests) was last verified green on 2026-06-10 and is unaffected by
+the changes since (all JVM-covered).

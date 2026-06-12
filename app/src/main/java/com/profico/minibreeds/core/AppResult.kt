@@ -11,14 +11,6 @@ sealed interface AppResult<out T> {
 
     /** Wraps a typed error that prevented computation. */
     data class Failure(val error: AppError) : AppResult<Nothing>
-
-    companion object {
-        /** Returns a [Success] wrapping [value]. */
-        fun <T> success(value: T): AppResult<T> = Success(value)
-
-        /** Returns a [Failure] wrapping [error]. */
-        fun failure(error: AppError): AppResult<Nothing> = Failure(error)
-    }
 }
 
 /** Transforms the success value with [transform]; passes failures through unchanged. */

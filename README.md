@@ -119,7 +119,7 @@ testable. No debounce — the filter is local and instant.
 See [TESTING.md](TESTING.md) for how to run each suite, single-test invocation,
 report locations, and the manual verification checklist.
 
-Unit tests — 56 across 9 classes (`app\src\test`, run with
+Unit tests — 55 across 9 classes (`app\src\test`, run with
 `.\gradlew.bat :app:testDebugUnitTest`):
 
 - `AppResultTest` — `map`/`onSuccess`/`onFailure` fire on the right variant
