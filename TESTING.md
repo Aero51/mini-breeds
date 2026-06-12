@@ -57,7 +57,7 @@ Run a single class or test:
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-20 tests across 3 classes in `app\src\androidTest\java\com\profico\minibreeds\`:
+21 tests across 3 classes in `app\src\androidTest\java\com\profico\minibreeds\`:
 
 - `ui\breedlist\BreedListScreenTest` / `ui\breeddetail\BreedDetailScreenTest` —
   Compose tests on the **stateless** screens: every UI state renders, and every
@@ -158,6 +158,6 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 All four were last verified on 2026-06-12: the JVM unit suite **62/62 green**
 (with Avast File Shield disabled; earlier the same day the two §1
 environment-dependent DataStore failures reproduced while it was active);
-lint and `assembleRelease` green; the instrumented suite **20/20 green** on
-the Pixel_9a emulator. The manual checklist in §4 was also completed in full
-the same day.
+lint and `assembleRelease` green; the instrumented suite **21/21 green** on
+the Pixel_9a emulator (including the detail-scroll regression test). The
+manual checklist in §4 was also completed in full the same day.

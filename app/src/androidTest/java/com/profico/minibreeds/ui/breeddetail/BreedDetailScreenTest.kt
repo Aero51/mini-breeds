@@ -3,10 +3,12 @@ package com.profico.minibreeds.ui.breeddetail
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.profico.minibreeds.R
 import com.profico.minibreeds.core.AppError
 import com.profico.minibreeds.ui.common.CommonTestTags
@@ -53,6 +55,20 @@ class BreedDetailScreenTest {
         composeTestRule.onNodeWithText("Boston").assertIsDisplayed()
         composeTestRule.onNodeWithText("English").assertIsDisplayed()
         composeTestRule.onNodeWithText("French").assertIsDisplayed()
+    }
+
+    @Test
+    fun longSubBreedList_isScrollable_lastEntryReachable() {
+        // Regression test for landscape/small viewports: the header and the
+        // sub-breeds live in one LazyColumn, so off-screen content must be
+        // reachable by scrolling the whole detail content.
+        val many = (1..40).map { "sub$it" }
+        setScreen(uiState = contentState.copy(subBreeds = many))
+
+        composeTestRule.onNodeWithTag(BreedDetailTestTags.CONTENT)
+            .performScrollToNode(hasTestTag(BreedDetailTestTags.subBreed("sub40")))
+
+        composeTestRule.onNodeWithTag(BreedDetailTestTags.subBreed("sub40")).assertIsDisplayed()
     }
 
     @Test

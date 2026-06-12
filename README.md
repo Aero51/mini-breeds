@@ -144,7 +144,7 @@ Unit tests — 62 across 9 classes (`app\src\test`, run with
 - `KoinModulesTest` — DI graph verified with Koin `verify()`
 - `UiErrorTest` — every `AppError` maps to a distinct string resource
 
-Instrumented tests — 20 across 3 classes (`app\src\androidTest`, run with
+Instrumented tests — 21 across 3 classes (`app\src\androidTest`, run with
 `.\gradlew.bat :app:connectedDebugAndroidTest`, emulator/device required):
 
 - `BreedListScreenTest` / `BreedDetailScreenTest` — Compose UI tests on the stateless screens (states, callbacks, search, favorites), no Koin or network involved

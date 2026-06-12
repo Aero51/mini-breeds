@@ -1,6 +1,7 @@
 package com.profico.minibreeds.ui.breeddetail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,7 @@ object BreedDetailTestTags {
     const val FAVORITE_BUTTON = "breed_detail_favorite"
     const val TITLE = "breed_detail_title"
     const val IMAGE = "breed_detail_image"
+    const val CONTENT = "breed_detail_content"
     const val NO_SUB_BREEDS = "breed_detail_no_sub_breeds"
     /** Tag for the sub-breed card identified by [name]. */
     fun subBreed(name: String) = "sub_breed_$name"
@@ -137,38 +139,50 @@ fun BreedDetailScreen(
     }
 }
 
-/** Content area showing the breed header and either a sub-breed list or a "no sub-breeds" message. */
+/**
+ * Content area showing the breed header and either a sub-breed list or a
+ * "no sub-breeds" message. Everything lives in one [LazyColumn] so the whole
+ * screen scrolls — in landscape the photo header alone can fill the viewport,
+ * and a non-scrolling header would make the content below it unreachable.
+ */
 @Composable
 private fun BreedDetailContent(
     content: BreedDetailUiState.Content,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.padding(horizontal = 20.dp)) {
-        BreedHeader(content = content)
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp),
+        modifier = modifier.testTag(BreedDetailTestTags.CONTENT),
+    ) {
+        item(key = "header") {
+            BreedHeader(content = content)
+        }
 
         if (content.subBreeds.isEmpty()) {
-            Text(
-                text = stringResource(R.string.no_sub_breeds),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 24.dp)
-                    .testTag(BreedDetailTestTags.NO_SUB_BREEDS),
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.sub_breeds_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 24.dp, bottom = 10.dp),
-            )
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 16.dp),
-            ) {
-                items(content.subBreeds, key = { it }) { subBreed ->
-                    SubBreedCard(name = subBreed)
+            item(key = "no_sub_breeds") {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.no_sub_breeds),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = 16.dp)
+                            .testTag(BreedDetailTestTags.NO_SUB_BREEDS),
+                    )
                 }
+            }
+        } else {
+            item(key = "sub_breeds_title") {
+                Text(
+                    text = stringResource(R.string.sub_breeds_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 2.dp),
+                )
+            }
+            items(content.subBreeds, key = { it }) { subBreed ->
+                SubBreedCard(name = subBreed)
             }
         }
     }
