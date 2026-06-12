@@ -1,7 +1,8 @@
 # Code walkthrough — every class explained simply
 
 A plain-English tour of every class and function in the app, what it does, and
-why that approach was chosen over the alternatives.  Read it top to
+why that approach was chosen over the alternatives. Written for a developer who
+is new to this codebase (or to modern Android in general). Read it top to
 bottom — it goes in dependency order, so nothing refers to something you
 haven't met yet.
 
