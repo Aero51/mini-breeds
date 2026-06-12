@@ -13,9 +13,13 @@ color-coded monogram avatars (hue derived from the breed name, stable everywhere
 breed appears), pill-shaped search bar, spring-animated favorite hearts, animated
 list reordering while filtering, and illustrated empty/error states.
 
-| Breed list | Breed detail |
+| Breed list — light | Breed detail — light |
 |---|---|
-| ![Breed list](docs/screenshot_list.png) | ![Breed detail](docs/screenshot_detail.png) |
+| ![Breed list, light theme](docs/screenshot_list_light.png) | ![Breed detail, light theme](docs/screenshot_detail_light.png) |
+
+| Breed list — dark | Breed detail — dark |
+|---|---|
+| ![Breed list, dark theme](docs/screenshot_list_dark.png) | ![Breed detail, dark theme](docs/screenshot_detail_dark.png) |
 
 **New to the codebase?** [WALKTHROUGH.md](WALKTHROUGH.md) explains every class
 and function in plain language. [ALTERNATIVES.md](ALTERNATIVES.md) goes deeper
