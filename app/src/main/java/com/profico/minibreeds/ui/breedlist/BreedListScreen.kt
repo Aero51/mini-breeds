@@ -42,6 +42,7 @@ import com.profico.minibreeds.ui.common.BreedAvatar
 import com.profico.minibreeds.ui.common.ErrorContent
 import com.profico.minibreeds.ui.common.FavoriteIcon
 import com.profico.minibreeds.ui.common.LoadingContent
+import com.profico.minibreeds.ui.common.capitalized
 import com.profico.minibreeds.ui.theme.MiniBreedsTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -224,7 +225,7 @@ private fun BreedCard(
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = row.name.replaceFirstChar { it.uppercase() },
+                    text = row.name.capitalized(),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (row.subBreedCount > 0) {

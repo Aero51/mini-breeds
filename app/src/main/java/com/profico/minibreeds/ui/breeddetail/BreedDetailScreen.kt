@@ -41,6 +41,7 @@ import com.profico.minibreeds.ui.common.BreedAvatar
 import com.profico.minibreeds.ui.common.ErrorContent
 import com.profico.minibreeds.ui.common.FavoriteIcon
 import com.profico.minibreeds.ui.common.LoadingContent
+import com.profico.minibreeds.ui.common.capitalized
 import com.profico.minibreeds.ui.theme.MiniBreedsTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -200,7 +201,7 @@ private fun BreedHeader(content: BreedDetailUiState.Content) {
             )
         }
         Text(
-            text = content.name.replaceFirstChar { it.uppercase() },
+            text = content.name.capitalized(),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier
                 .padding(top = 12.dp)
@@ -240,7 +241,7 @@ private fun SubBreedCard(name: String) {
             BreedAvatar(name = name, size = 28.dp)
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = name.replaceFirstChar { it.uppercase() },
+                text = name.capitalized(),
                 style = MaterialTheme.typography.bodyLarge,
             )
         }

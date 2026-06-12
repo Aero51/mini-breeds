@@ -153,8 +153,9 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
 ```
 
-All four were last verified on 2026-06-12: the JVM unit suite (62 tests) ran
-60 green plus the two environment-dependent DataStore failures described in
-§1 (Avast File Shield; not app bugs); lint and `assembleRelease` green; the
-instrumented suite **20/20 green** on the Pixel_9a emulator. The manual
-checklist in §4 was also completed in full the same day.
+All four were last verified on 2026-06-12: the JVM unit suite **62/62 green**
+(with Avast File Shield disabled; earlier the same day the two §1
+environment-dependent DataStore failures reproduced while it was active);
+lint and `assembleRelease` green; the instrumented suite **20/20 green** on
+the Pixel_9a emulator. The manual checklist in §4 was also completed in full
+the same day.
