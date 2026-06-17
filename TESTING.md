@@ -12,13 +12,29 @@ Design decisions sections in `README.md`.
   running, or a physical device with USB debugging — verify with `adb devices`.
 - No API keys or backend setup needed. Unit tests run fully offline.
 
+### Choosing your wrapper
+
+Every command block below lists two lines — run the one for your OS:
+
+- **Windows:** `.\gradlew.bat …`
+- **macOS/Linux:** `./gradlew …` (and read `\` as `/` in any report paths)
+
+On macOS/Linux, if the first run fails with `permission denied: ./gradlew`, the
+wrapper lost its executable bit on checkout (it was last committed from
+Windows) — restore it once with `chmod +x gradlew`.
+
+The **Avast caveats** throughout this doc are specific to the Windows dev
+machine and **do not apply** on macOS/Linux.
+
 ## 1. Unit tests (JVM, no device)
 
 ```
-.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:testDebugUnitTest   # Windows
+./gradlew :app:testDebugUnitTest       # macOS/Linux
 ```
 
-62 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`:
+62 tests across 9 classes in `app\src\test\java\com\profico\minibreeds\`
+(macOS/Linux: `app/src/test/java/com/profico/minibreeds/`):
 
 | Class | What it proves |
 |---|---|
@@ -32,7 +48,8 @@ Design decisions sections in `README.md`.
 | `ui\common\UiErrorTest` | Each `AppError` maps to its own distinct string resource; `Http` carries the status code |
 | `di\KoinModulesTest` | The Koin graph resolves (Koin `verify()`) |
 
-HTML report: `app\build\reports\tests\testDebugUnitTest\index.html`
+HTML report — Windows: `app\build\reports\tests\testDebugUnitTest\index.html`;
+macOS/Linux: `app/build/reports/tests/testDebugUnitTest/index.html`
 
 **Caveat on this dev machine:** with Avast's File Shield active, the two
 DataStore tests that write to disk twice in a row fail with
@@ -47,17 +64,23 @@ an Avast exception for `%LOCALAPPDATA%\Temp`, where the tests write.
 Run a single class or test:
 
 ```
+# Windows
 .\gradlew.bat :app:testDebugUnitTest --tests "com.profico.minibreeds.ui.common.UiErrorTest"
 .\gradlew.bat :app:testDebugUnitTest --tests "*BreedListViewModelTest.retry*"
+# macOS/Linux
+./gradlew :app:testDebugUnitTest --tests "com.profico.minibreeds.ui.common.UiErrorTest"
+./gradlew :app:testDebugUnitTest --tests "*BreedListViewModelTest.retry*"
 ```
 
 ## 2. Instrumented UI tests (emulator/device required)
 
 ```
-.\gradlew.bat :app:connectedDebugAndroidTest
+.\gradlew.bat :app:connectedDebugAndroidTest   # Windows
+./gradlew :app:connectedDebugAndroidTest       # macOS/Linux
 ```
 
-21 tests across 3 classes in `app\src\androidTest\java\com\profico\minibreeds\`:
+21 tests across 3 classes in `app\src\androidTest\java\com\profico\minibreeds\`
+(macOS/Linux: `app/src/androidTest/java/com/profico/minibreeds/`):
 
 - `ui\breedlist\BreedListScreenTest` / `ui\breeddetail\BreedDetailScreenTest` —
   Compose tests on the **stateless** screens: every UI state renders, and every
@@ -69,7 +92,8 @@ Run a single class or test:
   propagation between screens. **No network is used**, so these pass even on a
   machine where the emulator has no internet (see §4).
 
-HTML report: `app\build\reports\androidTests\connected\debug\index.html`
+HTML report — Windows: `app\build\reports\androidTests\connected\debug\index.html`;
+macOS/Linux: `app/build/reports/androidTests/connected/debug/index.html`
 
 Conventions when adding UI tests:
 
@@ -79,26 +103,30 @@ Conventions when adding UI tests:
   `BreedDetailTestTags`, and `CommonTestTags` — don't match on display text
   except when the text itself is what's being asserted.
 - No mocking libraries; extend the hand-written fakes. `FakeBreedRepository`
-  exists in both `src\test` and `src\androidTest` (source sets don't share code —
+  exists in both `src\test` and `src\androidTest` — macOS/Linux `src/test` and
+  `src/androidTest` — (source sets don't share code —
   keep the two copies in sync).
 
 ## 3. Lint and release build
 
 ```
-.\gradlew.bat :app:lintDebug :app:assembleRelease
+.\gradlew.bat :app:lintDebug :app:assembleRelease   # Windows
+./gradlew :app:lintDebug :app:assembleRelease        # macOS/Linux
 ```
 
 Expected: **0 errors**. A handful of warnings are deliberate and should not be
 "fixed": `coreKtx` is pinned to 1.18.0 and compileSdk to 36 because core-ktx
 1.19.x requires compileSdk 37 (see `CLAUDE.md`).
-Report: `app\build\reports\lint-results-debug.txt`.
+Report — Windows: `app\build\reports\lint-results-debug.txt`;
+macOS/Linux: `app/build/reports/lint-results-debug.txt`.
 
 ## 4. Manual verification checklist
 
 Install and launch:
 
 ```
-.\gradlew.bat :app:installDebug
+.\gradlew.bat :app:installDebug   # Windows
+./gradlew :app:installDebug       # macOS/Linux
 adb shell am start -n com.profico.minibreeds/.MainActivity
 ```
 
@@ -143,7 +171,8 @@ type is R8-optimized and debug-signed precisely so it can be installed
 locally:
 
 ```
-.\gradlew.bat :app:installRelease
+.\gradlew.bat :app:installRelease   # Windows
+./gradlew :app:installRelease       # macOS/Linux
 adb shell am start -n com.profico.minibreeds/.MainActivity
 ```
 
@@ -152,7 +181,10 @@ adb shell am start -n com.profico.minibreeds/.MainActivity
 ## 6. Everything at once
 
 ```
+# Windows
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
+# macOS/Linux
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:connectedDebugAndroidTest :app:assembleRelease
 ```
 
 All four were last verified on 2026-06-12: the JVM unit suite **62/62 green**
