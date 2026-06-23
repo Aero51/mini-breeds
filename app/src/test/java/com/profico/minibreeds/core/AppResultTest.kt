@@ -13,6 +13,10 @@ class AppResultTest {
 
     private val failure = AppResult.Failure(AppError.NoConnection)
 
+    /**
+     * Happy path for [AppResult.map]: on a [AppResult.Success], the transform
+     * is applied and the result stays wrapped in `Success`.
+     */
     @Test
     fun `map transforms the success value`() {
         val result: AppResult<Int> = AppResult.Success(21)
@@ -20,6 +24,10 @@ class AppResultTest {
         assertEquals(AppResult.Success(42), result.map { it * 2 })
     }
 
+    /**
+     * Short-circuit guarantee: on a [AppResult.Failure], [AppResult.map] must
+     * return the same failure unchanged and must not invoke the transform.
+     */
     @Test
     fun `map passes failures through without invoking the transform`() {
         var invoked = false
@@ -30,6 +38,11 @@ class AppResultTest {
         assertFalse(invoked)
     }
 
+    /**
+     * [AppResult.onSuccess] runs its block only on `Success`, exposes the
+     * wrapped value to it, and returns the original receiver so callers can
+     * chain. The mirror case on `Failure` must not invoke the block.
+     */
     @Test
     fun `onSuccess runs only on success and returns the receiver`() {
         val success = AppResult.Success("ok")
@@ -45,6 +58,11 @@ class AppResultTest {
         assertFalse(ranOnFailure)
     }
 
+    /**
+     * [AppResult.onFailure] runs its block only on `Failure`, exposes the
+     * [AppError] to it, and returns the original receiver. The mirror case on
+     * `Success` must not invoke the block.
+     */
     @Test
     fun `onFailure runs only on failure and returns the receiver`() {
         var seen: AppError? = null

@@ -36,6 +36,11 @@ class NavigationTest {
     private lateinit var fakeRepository: FakeBreedRepository
     private lateinit var testModule: Module
 
+    /**
+     * Builds a [FakeBreedRepository] pre-seeded with `akita` and `bulldog`,
+     * wraps it in a Koin `single<BreedRepository>` override, and installs the
+     * override module so the real ViewModels resolve the fake.
+     */
     @Before
     fun setUp() {
         fakeRepository = FakeBreedRepository(
@@ -48,11 +53,13 @@ class NavigationTest {
         loadKoinModules(testModule)
     }
 
+    /** Removes the override so the next test starts from the real Koin graph. */
     @After
     fun tearDown() {
         unloadKoinModules(testModule)
     }
 
+    /** Composes the real [MiniBreedsNavHost] inside [MiniBreedsTheme]. */
     private fun setNavHost() {
         composeTestRule.setContent {
             MiniBreedsTheme {
@@ -61,12 +68,18 @@ class NavigationTest {
         }
     }
 
+    /**
+     * Polls up to 5s for at least one semantic node with [tag]. Used because
+     * the NavHost has async state-collection/navigation work and Compose may
+     * not be idle when the test next interacts with the tree.
+     */
     private fun waitForTag(tag: String) {
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
+    /** Start destination is the breed list; both seeded rows are rendered. */
     @Test
     fun startDestination_showsBreedList() {
         setNavHost()
@@ -76,6 +89,10 @@ class NavigationTest {
         composeTestRule.onNodeWithTag(BreedListTestTags.row("akita")).assertIsDisplayed()
     }
 
+    /**
+     * Clicking a row navigates to detail with the correct title and sub-breed
+     * nodes — verifies route argument plumbing through the real NavHost.
+     */
     @Test
     fun clickingBreedRow_navigatesToDetailWithSubBreeds() {
         setNavHost()
@@ -89,6 +106,7 @@ class NavigationTest {
         composeTestRule.onNodeWithTag(BreedDetailTestTags.subBreed("french")).assertIsDisplayed()
     }
 
+    /** Back button on detail pops back to the list with the row still present. */
     @Test
     fun backFromDetail_returnsToBreedList() {
         setNavHost()
@@ -103,6 +121,11 @@ class NavigationTest {
         composeTestRule.onNodeWithTag(BreedListTestTags.row("akita")).assertIsDisplayed()
     }
 
+    /**
+     * Toggling a favorite on the detail screen propagates through the real
+     * VM/state flow plumbing back to the repository — verified by polling
+     * `fakeRepository.favoritesState` for the expected value.
+     */
     @Test
     fun favoriteToggledOnDetail_isReflectedInList() {
         setNavHost()

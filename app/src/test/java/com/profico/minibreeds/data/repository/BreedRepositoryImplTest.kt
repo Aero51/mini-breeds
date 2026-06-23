@@ -37,6 +37,7 @@ class BreedRepositoryImplTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
+    /** Canonical happy-path body: three breeds, one of them with an empty sub-breed list. */
     private val successBody = """
         {
           "message": {
@@ -48,6 +49,12 @@ class BreedRepositoryImplTest {
         }
     """.trimIndent()
 
+    /**
+     * Boots a fresh [MockWebServer], builds an [OkHttpClient] with aggressive
+     * 500ms read / 2s connect timeouts (so timeout tests resolve quickly),
+     * wires Retrofit with kotlinx-serialization, and constructs the SUT with
+     * a [FakeFavoritesDataSource] and a [TestDispatcherProvider].
+     */
     @Before
     fun setUp() {
         server = MockWebServer()
@@ -69,15 +76,22 @@ class BreedRepositoryImplTest {
         repository = BreedRepositoryImpl(api, favorites, TestDispatcherProvider(testDispatcher))
     }
 
+    /** Shuts down the [MockWebServer] so the next test starts clean. */
     @After
     fun tearDown() {
         server.close()
     }
 
+    /** Helper that enqueues one [MockResponse] with the given body/code. */
     private fun enqueue(body: String, code: Int = 200) {
         server.enqueue(MockResponse.Builder().code(code).body(body).build())
     }
 
+    /**
+     * Happy-path refresh: the response is mapped to [Breed]s, sorted
+     * alphabetically (`akita`, `bulldog`, `hound`), and copied into
+     * `cachedBreeds`.
+     */
     @Test
     fun `successful refresh maps and sorts breeds and fills cache`() = runTest(testDispatcher) {
         enqueue(successBody)
@@ -93,6 +107,10 @@ class BreedRepositoryImplTest {
         assertEquals(expected, repository.cachedBreeds.value)
     }
 
+    /**
+     * HTTP 500 surfaces as [AppError.Http] with the status code preserved, and
+     * a cold cache stays `null` — failures must not poison subsequent reads.
+     */
     @Test
     fun `http 500 maps to Http error and leaves cache untouched`() = runTest(testDispatcher) {
         enqueue("oops", code = 500)
@@ -103,6 +121,7 @@ class BreedRepositoryImplTest {
         assertNull(repository.cachedBreeds.value)
     }
 
+    /** A 200 with a body whose `message` isn't a map maps to [AppError.Serialization]. */
     @Test
     fun `malformed body maps to Serialization error`() = runTest(testDispatcher) {
         enqueue("""{"message": "definitely not a map"}""")
@@ -112,6 +131,10 @@ class BreedRepositoryImplTest {
         assertEquals(AppResult.Failure(AppError.Serialization), result)
     }
 
+    /**
+     * An empty `message: {}` with `status: success` is a legitimate empty list,
+     * not an error.
+     */
     @Test
     fun `successful response with no breeds maps to empty list`() = runTest(testDispatcher) {
         enqueue("""{"message": {}, "status": "success"}""")
@@ -122,6 +145,7 @@ class BreedRepositoryImplTest {
         assertEquals(emptyList<Breed>(), repository.cachedBreeds.value)
     }
 
+    /** A non-`success` payload `status` field surfaces as [AppError.ApiStatus]. */
     @Test
     fun `api status other than success maps to ApiStatus error`() = runTest(testDispatcher) {
         enqueue("""{"message": {}, "status": "error"}""")
@@ -131,6 +155,7 @@ class BreedRepositoryImplTest {
         assertEquals(AppResult.Failure(AppError.ApiStatus("error")), result)
     }
 
+    /** Closing the server before the call simulates a refused connection → [AppError.NoConnection]. */
     @Test
     fun `unreachable server maps to NoConnection`() = runTest(testDispatcher) {
         server.close() // connection refused from now on
@@ -140,6 +165,10 @@ class BreedRepositoryImplTest {
         assertEquals(AppResult.Failure(AppError.NoConnection), result)
     }
 
+    /**
+     * `bodyDelay` longer than OkHttp's `readTimeout` triggers a socket
+     * timeout, which the repository surfaces as [AppError.Timeout].
+     */
     @Test
     fun `slow response maps to Timeout`() = runTest(testDispatcher) {
         server.enqueue(
@@ -155,6 +184,7 @@ class BreedRepositoryImplTest {
         assertEquals(AppResult.Failure(AppError.Timeout), result)
     }
 
+    /** After a successful refresh, `observeBreed("bulldog")` emits the matching entry. */
     @Test
     fun `observeBreed emits matching breed after refresh`() = runTest(testDispatcher) {
         enqueue(successBody)
@@ -165,6 +195,10 @@ class BreedRepositoryImplTest {
         assertEquals(Breed("bulldog", listOf("boston", "french")), breed)
     }
 
+    /**
+     * `observeBreed` is non-throwing: it emits `null` both on a cold cache and
+     * for unknown names after a successful refresh.
+     */
     @Test
     fun `observeBreed emits null for unknown breed and cold cache`() = runTest(testDispatcher) {
         assertNull(repository.observeBreed("bulldog").first())
@@ -175,6 +209,7 @@ class BreedRepositoryImplTest {
         assertNull(repository.observeBreed("not-a-breed").first())
     }
 
+    /** Last-known-good semantics: a failing refresh leaves the previous cache intact. */
     @Test
     fun `failed refresh keeps previous cache`() = runTest(testDispatcher) {
         enqueue(successBody)
@@ -186,6 +221,7 @@ class BreedRepositoryImplTest {
         assertEquals(3, repository.cachedBreeds.value?.size)
     }
 
+    /** `toggleFavorite` delegates to the data source and the flow surfaces the change. */
     @Test
     fun `toggleFavorite delegates to data source`() = runTest(testDispatcher) {
         repository.toggleFavorite("hound")
@@ -194,6 +230,7 @@ class BreedRepositoryImplTest {
         assertTrue(repository.favorites.first().contains("hound"))
     }
 
+    /** Image endpoint happy path: the URL string is returned wrapped in [AppResult.Success]. */
     @Test
     fun `successful image fetch returns the url`() = runTest(testDispatcher) {
         enqueue("""{"message": "https://images.dog.ceo/breeds/hound/n123.jpg", "status": "success"}""")
@@ -203,6 +240,7 @@ class BreedRepositoryImplTest {
         assertEquals(AppResult.Success("https://images.dog.ceo/breeds/hound/n123.jpg"), result)
     }
 
+    /** Healthy 200 with `status: error` from the image endpoint → [AppError.ApiStatus]. */
     @Test
     fun `image fetch with api status error maps to ApiStatus`() = runTest(testDispatcher) {
         enqueue("""{"message": "Breed not found", "status": "error"}""")
@@ -212,6 +250,7 @@ class BreedRepositoryImplTest {
         assertEquals(AppResult.Failure(AppError.ApiStatus("error")), result)
     }
 
+    /** 404 from the image endpoint surfaces as [AppError.Http] with the code preserved. */
     @Test
     fun `image fetch http 404 maps to Http error`() = runTest(testDispatcher) {
         enqueue("not found", code = 404)

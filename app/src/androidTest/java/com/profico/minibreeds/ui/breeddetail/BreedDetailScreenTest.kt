@@ -29,6 +29,11 @@ class BreedDetailScreenTest {
         isFavorite = false,
     )
 
+    /**
+     * Wraps [BreedDetailScreen] in [MiniBreedsTheme] and installs it in the
+     * Compose test rule. Callbacks default to no-ops; each test overrides only
+     * the ones it asserts on.
+     */
     private fun setScreen(
         uiState: BreedDetailUiState,
         onNavigateBack: () -> Unit = {},
@@ -47,6 +52,10 @@ class BreedDetailScreenTest {
         }
     }
 
+    /**
+     * Title is rendered title-cased ("Bulldog"), and each sub-breed is shown
+     * as title-cased text.
+     */
     @Test
     fun contentState_showsCapitalizedTitleAndSubBreeds() {
         setScreen(uiState = contentState)
@@ -57,6 +66,11 @@ class BreedDetailScreenTest {
         composeTestRule.onNodeWithText("French").assertIsDisplayed()
     }
 
+    /**
+     * Regression test for landscape/small viewports: the header and sub-breeds
+     * share one `LazyColumn`, so off-screen entries must be reachable by
+     * scrolling the outer `CONTENT` column.
+     */
     @Test
     fun longSubBreedList_isScrollable_lastEntryReachable() {
         // Regression test for landscape/small viewports: the header and the
@@ -71,6 +85,7 @@ class BreedDetailScreenTest {
         composeTestRule.onNodeWithTag(BreedDetailTestTags.subBreed("sub40")).assertIsDisplayed()
     }
 
+    /** Empty sub-breeds list renders the `NO_SUB_BREEDS` placeholder instead of a list. */
     @Test
     fun contentStateWithoutSubBreeds_showsPlaceholder() {
         setScreen(uiState = contentState.copy(subBreeds = emptyList()))
@@ -78,6 +93,7 @@ class BreedDetailScreenTest {
         composeTestRule.onNodeWithTag(BreedDetailTestTags.NO_SUB_BREEDS).assertIsDisplayed()
     }
 
+    /** Clicking the back button fires `onNavigateBack`. */
     @Test
     fun backButton_invokesCallback() {
         var backInvoked = false
@@ -88,6 +104,7 @@ class BreedDetailScreenTest {
         assertTrue(backInvoked)
     }
 
+    /** Clicking the favorite button fires `onToggleFavorite`. */
     @Test
     fun favoriteButton_invokesToggleCallback() {
         var toggleInvoked = false
@@ -98,6 +115,10 @@ class BreedDetailScreenTest {
         assertTrue(toggleInvoked)
     }
 
+    /**
+     * Error state renders the resolved string for the [AppError] and the
+     * retry button forwards taps via `onRetry`.
+     */
     @Test
     fun errorState_showsMessageAndRetryInvokesCallback() {
         var retried = false
@@ -113,6 +134,7 @@ class BreedDetailScreenTest {
         assertTrue(retried)
     }
 
+    /** Loading state shows the shared `LOADING_INDICATOR`. */
     @Test
     fun loadingState_showsProgressIndicator() {
         setScreen(uiState = BreedDetailUiState.Loading)
@@ -120,6 +142,7 @@ class BreedDetailScreenTest {
         composeTestRule.onNodeWithTag(CommonTestTags.LOADING_INDICATOR).assertIsDisplayed()
     }
 
+    /** With a non-null `imageUrl`, the breed photo node renders. */
     @Test
     fun contentStateWithImageUrl_showsBreedPhoto() {
         setScreen(uiState = contentState.copy(imageUrl = "https://example.com/dog.jpg"))
@@ -127,6 +150,10 @@ class BreedDetailScreenTest {
         composeTestRule.onNodeWithTag(BreedDetailTestTags.IMAGE).assertIsDisplayed()
     }
 
+    /**
+     * When `imageUrl` is null, the photo node is absent but the title still
+     * renders — proves the fallback layout doesn't collapse the page.
+     */
     @Test
     fun contentStateWithoutImageUrl_fallsBackToAvatar() {
         setScreen(uiState = contentState.copy(imageUrl = null))

@@ -9,6 +9,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Hand-written fake implementing [BreedRepository] for JVM unit tests. The
+ * project bans mocking libraries; source sets cannot share code without extra
+ * Gradle wiring, so a near-identical twin lives under `androidTest`.
+ *
+ * Scripting points:
+ *  - [refreshResults] — queue of results returned by successive [refreshBreeds]
+ *    calls; lets a single test play out "fail then succeed" scenarios.
+ *  - [imageResult] — the next answer for [fetchBreedImageUrl].
+ *
+ * Recorders:
+ *  - [refreshCallCount] — how many times [refreshBreeds] was called.
+ *  - [toggledNames] — every name passed to [toggleFavorite].
+ */
 class FakeBreedRepository(
     initialCache: List<Breed>? = null,
     initialFavorites: Set<String> = emptySet(),
@@ -23,8 +37,14 @@ class FakeBreedRepository(
         private set
     val toggledNames = mutableListOf<String>()
 
+    /** Read-only view of the in-memory cache used by the UI layer. */
     override val cachedBreeds: StateFlow<List<Breed>?> = cache.asStateFlow()
 
+    /**
+     * Pops the next scripted result, or falls back to `Success(cache)` if none
+     * is queued. Increments [refreshCallCount] and writes successful results
+     * through to the cache so observers update.
+     */
     override suspend fun refreshBreeds(): AppResult<List<Breed>> {
         refreshCallCount++
         val result = refreshResults.removeFirstOrNull()
@@ -33,16 +53,20 @@ class FakeBreedRepository(
         return result
     }
 
+    /** Maps the cache flow to the single matching breed (or `null` for miss). */
     override fun observeBreed(name: String): Flow<Breed?> =
         cache.map { breeds -> breeds?.firstOrNull { it.name == name } }
 
     /** Result returned by [fetchBreedImageUrl]; defaults to a stable fake URL. */
     var imageResult: AppResult<String> = AppResult.Success("https://example.com/dog.jpg")
 
+    /** Returns [imageResult] verbatim; the breed name is ignored. */
     override suspend fun fetchBreedImageUrl(breedName: String): AppResult<String> = imageResult
 
+    /** Exposes [favoritesState] as a read-only flow for the UI layer. */
     override val favorites: Flow<Set<String>> = favoritesState
 
+    /** Records the name into [toggledNames] and flips set membership. */
     override suspend fun toggleFavorite(breedName: String) {
         toggledNames += breedName
         favoritesState.value =

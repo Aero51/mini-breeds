@@ -31,6 +31,11 @@ class BreedListScreenTest {
         noResultsForQuery = false,
     )
 
+    /**
+     * Wraps [BreedListScreen] in [MiniBreedsTheme] and installs it in the
+     * Compose test rule. All callbacks default to no-ops; each test overrides
+     * only the ones it asserts on.
+     */
     private fun setScreen(
         uiState: BreedListUiState,
         query: String = "",
@@ -53,6 +58,7 @@ class BreedListScreenTest {
         }
     }
 
+    /** Loading state shows the shared `LOADING_INDICATOR`. */
     @Test
     fun loadingState_showsProgressIndicator() {
         setScreen(uiState = BreedListUiState.Loading)
@@ -60,6 +66,10 @@ class BreedListScreenTest {
         composeTestRule.onNodeWithTag(CommonTestTags.LOADING_INDICATOR).assertIsDisplayed()
     }
 
+    /**
+     * Content state renders the `LIST`, title-cased breed names, and the
+     * pluralised sub-breed count resolved from `R.plurals.sub_breed_count`.
+     */
     @Test
     fun contentState_showsBreedRowsWithSubBreedCount() {
         setScreen(uiState = contentState)
@@ -72,6 +82,7 @@ class BreedListScreenTest {
         composeTestRule.onNodeWithText(subBreedCount).assertIsDisplayed()
     }
 
+    /** Clicking a row forwards that row's breed name through `onBreedClick`. */
     @Test
     fun rowClick_invokesCallbackWithBreedName() {
         val clicked = mutableListOf<String>()
@@ -82,6 +93,7 @@ class BreedListScreenTest {
         assertEquals(listOf("bulldog"), clicked)
     }
 
+    /** Clicking a favorite icon forwards that row's name through `onToggleFavorite`. */
     @Test
     fun favoriteClick_invokesToggleCallbackWithBreedName() {
         val toggled = mutableListOf<String>()
@@ -92,6 +104,10 @@ class BreedListScreenTest {
         assertEquals(listOf("akita"), toggled)
     }
 
+    /**
+     * Error state renders the resolved string for the [AppError] and the
+     * retry button forwards taps via `onRetry`.
+     */
     @Test
     fun errorState_showsMessageAndRetryInvokesCallback() {
         var retried = false
@@ -107,6 +123,11 @@ class BreedListScreenTest {
         assertTrue(retried)
     }
 
+    /**
+     * Typing into the search field invokes `onQueryChange`; the latest value
+     * received is the full input string. Doesn't assert exact emission count
+     * because IME-driven input may fire per-keystroke.
+     */
     @Test
     fun typingInSearchField_invokesQueryChange() {
         val queries = mutableListOf<String>()
@@ -118,6 +139,10 @@ class BreedListScreenTest {
         assertEquals("husky", queries.last())
     }
 
+    /**
+     * Tapping the clear icon (located by `R.string.search_clear` content
+     * description) emits exactly one `""` query.
+     */
     @Test
     fun clearSearchIcon_invokesQueryChangeWithEmptyString() {
         val queries = mutableListOf<String>()
@@ -129,6 +154,7 @@ class BreedListScreenTest {
         assertEquals(listOf(""), queries)
     }
 
+    /** Empty filter result with the no-results flag set renders the `EMPTY_RESULTS` panel. */
     @Test
     fun emptyFilterResult_showsEmptyMessage() {
         setScreen(

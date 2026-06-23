@@ -12,11 +12,20 @@ import org.koin.test.verify.verify
 @OptIn(KoinExperimentalAPI::class)
 class KoinModulesTest {
 
+    /**
+     * `networkModule` is self-contained; every dependency it pulls in is
+     * declared within the module, so `.verify()` runs without any extras.
+     */
     @Test
     fun `network module definitions are resolvable`() {
         networkModule.verify()
     }
 
+    /**
+     * `dataModule` consumes [Context], which is injected by the Koin Android
+     * runtime in production. We declare it as an `extraType` so verification
+     * accepts it without needing an Android environment here.
+     */
     @Test
     fun `data module definitions are resolvable`() {
         dataModule.verify(

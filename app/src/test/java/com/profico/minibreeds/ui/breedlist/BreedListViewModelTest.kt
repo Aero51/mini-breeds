@@ -12,6 +12,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Unit tests for [BreedListViewModel] using [MainDispatcherRule], Turbine, and
+ * [FakeBreedRepository] for scripted refresh results.
+ */
 class BreedListViewModelTest {
 
     @get:Rule
@@ -23,8 +27,14 @@ class BreedListViewModelTest {
         Breed("hound", listOf("afghan", "basset")),
     )
 
+    /** Constructs the SUT bound to [repository]. */
     private fun viewModel(repository: FakeBreedRepository) = BreedListViewModel(repository)
 
+    /**
+     * Cold start: the VM emits [BreedListUiState.Loading] first, then
+     * [BreedListUiState.Content] with rows in API order and the right
+     * sub-breed counts (`bulldog` reports `2`).
+     */
     @Test
     fun `starts in Loading then shows content`() = runTest {
         val repository = FakeBreedRepository().apply {
@@ -42,6 +52,11 @@ class BreedListViewModelTest {
         }
     }
 
+    /**
+     * Failure → retry → success: the VM walks Loading → Error → Loading →
+     * Content and reports two `refreshBreeds` calls (StateFlow may conflate
+     * the intermediate Loading).
+     */
     @Test
     fun `failed load shows Error then retry recovers`() = runTest {
         val repository = FakeBreedRepository().apply {
@@ -65,6 +80,7 @@ class BreedListViewModelTest {
         }
     }
 
+    /** A query of `"BULL"` filters the rows case-insensitively to `[bulldog]`. */
     @Test
     fun `query filters case-insensitively`() = runTest {
         val repository = FakeBreedRepository().apply {
@@ -83,6 +99,11 @@ class BreedListViewModelTest {
         }
     }
 
+    /**
+     * Genuine empty API response: [BreedListUiState.Content] with no rows and
+     * `noResultsForQuery = false`, so the UI doesn't mistake it for an empty
+     * *search* result.
+     */
     @Test
     fun `empty breed list is Content without the no-results flag`() = runTest {
         // A genuinely empty list (API returned nothing) must not be mistaken for
@@ -101,6 +122,7 @@ class BreedListViewModelTest {
         }
     }
 
+    /** Whitespace around the query is trimmed before filtering. */
     @Test
     fun `query is trimmed before filtering`() = runTest {
         val repository = FakeBreedRepository().apply {
@@ -120,6 +142,11 @@ class BreedListViewModelTest {
         }
     }
 
+    /**
+     * A query that matches no breed yields empty rows with
+     * `noResultsForQuery = true`, which the UI uses to show the "no matches"
+     * panel.
+     */
     @Test
     fun `query with no matches sets noResultsForQuery`() = runTest {
         val repository = FakeBreedRepository().apply {
@@ -139,6 +166,10 @@ class BreedListViewModelTest {
         }
     }
 
+    /**
+     * Toggling a favorite flips that row's `isFavorite` flag in the next
+     * emission and records the call on the fake repository.
+     */
     @Test
     fun `favorite changes are reflected in rows`() = runTest {
         val repository = FakeBreedRepository().apply {
@@ -159,6 +190,7 @@ class BreedListViewModelTest {
         }
     }
 
+    /** Setting the query back to `""` after filtering restores the full row list. */
     @Test
     fun `clearing the query restores the full list`() = runTest {
         val repository = FakeBreedRepository().apply {
