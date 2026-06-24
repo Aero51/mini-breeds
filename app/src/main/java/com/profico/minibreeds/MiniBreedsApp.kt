@@ -1,43 +1,28 @@
 package com.profico.minibreeds
 
 import android.app.Application
-import coil3.ImageLoader
-import coil3.PlatformContext
-import coil3.SingletonImageLoader
-import coil3.network.okhttp.OkHttpNetworkFetcherFactory
-import com.profico.minibreeds.di.appModules
-import okhttp3.OkHttpClient
-import org.koin.android.ext.android.getKoin
-import org.koin.android.ext.koin.androidContext
-import org.koin.android.ext.koin.androidLogger
-import org.koin.core.context.startKoin
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+import com.profico.minibreeds.data.BreedRepository
+import com.profico.minibreeds.data.BreedRepositoryImpl
+import com.profico.minibreeds.data.DogApi
+
+/** App-wide Preferences DataStore used to persist favorites. */
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "minibreeds_prefs")
 
 /**
- * [android.app.Application] subclass that initialises the Koin dependency
- * graph and provides the app-wide Coil [ImageLoader].
+ * Application entry point. Does the app's dependency injection by hand: it builds
+ * the single [BreedRepository] that ViewModels read through [repository].
  */
-class MiniBreedsApp : Application(), SingletonImageLoader.Factory {
+class MiniBreedsApp : Application() {
 
-    /** Starts Koin with [appModules] before any component is created. */
+    lateinit var repository: BreedRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        startKoin {
-            androidLogger()
-            androidContext(this@MiniBreedsApp)
-            modules(appModules)
-        }
+        repository = BreedRepositoryImpl(DogApi.create(), dataStore)
     }
-
-    /**
-     * Builds the singleton [ImageLoader] Coil resolves lazily on first use.
-     * Image requests go through the Koin-provided [OkHttpClient], so they
-     * share the API client's connection pool, timeouts, and debug logging
-     * instead of Coil creating a second HTTP client with its own defaults.
-     */
-    override fun newImageLoader(context: PlatformContext): ImageLoader =
-        ImageLoader.Builder(context)
-            .components {
-                add(OkHttpNetworkFetcherFactory(callFactory = { getKoin().get<OkHttpClient>() }))
-            }
-            .build()
 }

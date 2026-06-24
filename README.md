@@ -1,194 +1,76 @@
 # Mini-Breeds
 
-A small master–detail Android app, 100% Jetpack Compose, that lists dog breeds from
-[dog.ceo](https://dog.ceo/dog-api/) (`GET https://dog.ceo/api/breeds/list/all`), shows
-each breed's sub-breeds on a detail screen, and handles loading and failure states
-explicitly.
+A small master–detail Android app, 100% Jetpack Compose. It lists dog breeds from
+[dog.ceo](https://dog.ceo/dog-api/) (`GET https://dog.ceo/api/breeds/list/all`), opens
+a detail screen for the selected breed, and handles loading and error states.
 
-**Bonus features implemented:** real-time search filtering of the breed list, and
-favorites persisted across app restarts with Preferences DataStore.
-
-**UI:** custom warm Material 3 theme (light + dark), card-based list with per-breed
-color-coded monogram avatars (hue derived from the breed name, stable everywhere the
-breed appears), a random photo of the breed on the detail screen (Coil; falls back
-to the monogram if the fetch fails), pill-shaped search bar, spring-animated favorite
-hearts, animated list reordering while filtering, and illustrated empty/error states.
-
-| Breed list — light | Breed detail — light |
-|---|---|
-| ![Breed list, light theme](docs/screenshot_list_light.png) | ![Breed detail, light theme](docs/screenshot_detail_light.png) |
-
-| Breed list — dark | Breed detail — dark |
-|---|---|
-| ![Breed list, dark theme](docs/screenshot_list_dark.png) | ![Breed detail, dark theme](docs/screenshot_detail_dark.png) |
-
-**New to the codebase?** [WALKTHROUGH.md](WALKTHROUGH.md) explains every class
-and function in plain language. [ALTERNATIVES.md](ALTERNATIVES.md) goes deeper
-on each decision: the alternative implementations considered, their honest
-trade-offs, and the deciding factor.
+**Bonus features:** real-time local search, and per-row favorites persisted with DataStore.
 
 ## Tech stack
 
 | Concern | Choice |
 |---|---|
-| UI | Jetpack Compose + Material 3, single-activity, custom warm light/dark theme |
-| Architecture | MVVM, unidirectional data flow, `StateFlow` UI state |
-| Navigation | Navigation Compose with typed (`@Serializable`) routes |
-| Networking | Retrofit 3 + OkHttp 5 + kotlinx.serialization |
-| Images | Coil 3 (breed photo on the detail screen) |
-| DI | Koin 4 |
+| UI | Jetpack Compose + Material 3, single activity |
+| Architecture | MVVM with a `StateFlow` of UI state |
+| Navigation | Navigation Compose, typed (`@Serializable`) routes |
+| Networking | Retrofit + OkHttp + kotlinx.serialization |
 | Persistence | Preferences DataStore (favorites) |
-| Tests | JUnit4, Turbine, MockWebServer 3, Compose UI test, hand-written fakes |
+| DI | Manual — the repository is created in `Application` |
+| Tests | JUnit + coroutines-test with hand-written fakes |
 
-## Module / package structure
+## How it's organized
 
-A single `:app` module with strictly layered packages — modularity comes from package
-boundaries and interfaces, not Gradle modules (at this size, extra modules would add
-build complexity without buying any decoupling that interfaces don't already provide):
+One `:app` module, two small packages:
 
 ```
-core\             AppError, AppResult, DispatcherProvider — no Android/library deps
-data\remote\      DTO, Retrofit service, safeApiCall
-data\local\       FavoritesDataSource (interface) + DataStore implementation
-data\repository\  BreedRepositoryImpl (in-memory StateFlow cache)
-domain\           Breed model, BreedRepository interface
-ui\breedlist\     UiState, ViewModel, screen (stateless + stateful route wrapper)
-ui\breeddetail\   UiState, ViewModel, screen
-ui\navigation\    Typed routes, NavHost
-ui\common\        AppError→string mapping, Loading/Error composables
-di\               Koin modules (network / data / viewModel)
+data/                      Breed, DogResponse (DTO), DogApi (Retrofit), BreedRepository
+ui/
+  Navigation.kt            typed routes + NavHost
+  breedlist/               BreedListViewModel + BreedListScreen
+  breeddetail/             BreedDetailScreen
+  common/                  Loading/Error composables, BreedAvatar
+  theme/                   Material 3 theme
+MiniBreedsApp.kt           builds the repository (manual DI)
+MainActivity.kt            hosts the Compose nav graph
 ```
 
-The layering rule: `ui` depends only on `domain` + `core`; `data` is the only package
-that imports Retrofit or DataStore. The `BreedRepository` interface is the seam between
-the two halves.
+Data flows one way: the screen collects a `StateFlow<UiState>` from the ViewModel; the
+ViewModel calls the repository; the repository talks to Retrofit and DataStore. The
+`BreedRepository` interface is the seam that lets the ViewModel be tested with a fake.
 
-## Error handling
+## Key decisions
 
-All failures crossing a layer boundary are values of a sealed `AppError` taxonomy
-(`NoConnection`, `Timeout`, `Http(code)`, `Serialization`, `ApiStatus(status)`,
-`Unknown`), wrapped in `AppResult<T>` — never raw exceptions.
+- **`UiState` is a sealed interface** (`Loading` / `Error` / `Content`). The ViewModel
+  wraps the network call in a `try/catch` and emits the matching state — an `IOException`
+  becomes an offline error, anything else a generic one. No custom result/error types.
+- **Manual DI.** There's exactly one dependency to wire (the repository), so the
+  `Application` builds it and a small `ViewModelProvider.Factory` hands it to the
+  ViewModel. No DI framework to explain.
+- **Search and favorites are merged in the ViewModel.** The ViewModel keeps the loaded
+  breeds, the search query, and the current favorites as plain fields and rebuilds the
+  rendered list with a single `recompute()` whenever any of them changes — so filtering
+  and favorite state live in one place and are easy to unit-test. No `combine`/`stateIn`
+  to reason about; just a `MutableStateFlow` updated on the main thread.
+- **The detail screen only needs the breed name**, which is passed as a navigation
+  argument — so it's a stateless composable with no ViewModel.
+- **Stateless screens + thin stateful wrappers.** Each screen is a function of
+  `(state, callbacks)` and is previewable without a ViewModel or the network.
 
-- **`safeApiCall` is the single choke point** where transport exceptions are caught and
-  mapped (`data\remote\SafeApiCall.kt`). `CancellationException` is rethrown so
-  structured concurrency keeps working. Nothing above the data layer ever catches
-  network/parsing exceptions.
-- The API's own `"status"` field is checked even on HTTP 2xx — a `"status": "error"`
-  body becomes `AppError.ApiStatus`, not silently-empty content.
-- The repository logs every `Failure` at one place (`Log.w`), so swapping in
-  Crashlytics later is a one-line change.
-- `ui\common\UiError.kt` maps each `AppError` case to a distinct, user-friendly string
-  resource; every error screen offers Retry.
-- A corrupted DataStore file degrades to an empty favorites set instead of crashing.
-- A failed breed-photo fetch degrades to the monogram avatar — decorative content
-  never replaces working breed data with an error screen.
+## Running it
 
-## Design decisions & rationale
+```
+.\gradlew.bat :app:assembleDebug        # build
+.\gradlew.bat :app:testDebugUnitTest    # unit tests
+.\gradlew.bat :app:installDebug         # install on a device/emulator
+```
 
-**No use-case layer.** The domain has two read paths and one toggle; use cases would be
-pure pass-throughs. The `BreedRepository` interface already gives ViewModels a fake-able
-boundary. Adding the layer would be ceremony, not architecture — it can be introduced
-later if business logic appears.
-
-**Koin over Hilt.** No annotation processing (faster builds, no KSP coupling to the
-Kotlin version — this project runs Kotlin 2.4 under AGP 9's built-in Kotlin where
-processor compatibility is the riskiest dependency), simple explicit module
-declarations, and first-class Compose/ViewModel support. The DI graph is verified by a
-unit test (`KoinModulesTest` using Koin's `verify()`), recovering most of the
-compile-time safety Hilt would give.
-
-**DataStore over Room.** Favorites are a single `Set<String>`. Room would mean an
-entity, a DAO and a database for what is semantically one preference value. Preferences
-DataStore gives coroutine-native, transactional persistence with a `Flow` API in a few
-lines.
-
-**Hand-written fakes over mocking libraries.** Every boundary is an interface, so fakes
-are ~40 trivial lines, readable, and immune to mocking-agent/Kotlin-version
-incompatibilities. The HTTP layer is tested against the *real* Retrofit/OkHttp/Json
-stack with MockWebServer rather than mocked, so converter and error-mapping behavior is
-actually exercised.
-
-**Navigation passes only the breed name.** The detail screen derives sub-breeds and
-favorite state from the repository cache. If the cache is gone (process death), the
-detail ViewModel refetches itself — routes stay trivially serializable and there is no
-risk of stale parceled data.
-
-**Detail ViewModel reads the route argument via `SavedStateHandle[key]`** instead of
-`SavedStateHandle.toRoute()`: typed navigation stores route arguments under their
-property names, and the key-based read keeps the ViewModel unit-testable on the JVM,
-where `toRoute()` requires a real Android `Bundle`.
-
-**Stateless screens + stateful route wrappers.** Each screen is a pure function of
-`(UiState, callbacks)`, previewable and UI-testable without Koin or network; thin
-`*Route` wrappers own the `koinViewModel()` + `collectAsStateWithLifecycle()` wiring.
-
-**Search lives in the ViewModel, outside the load state.** The query `StateFlow` is kept
-separate from the Loading/Error/Content state so typed text survives a retry; filtering
-is a pure function combined with the favorites flow, which makes it directly unit
-testable. No debounce — the filter is local and instant.
+Requires JDK 17+, Android SDK platform 36, minSdk 26.
 
 ## Tests
 
-See [TESTING.md](TESTING.md) for how to run each suite, single-test invocation,
-report locations, and the manual verification checklist.
+Unit tests in `app/src/test` (`.\gradlew.bat :app:testDebugUnitTest`):
 
-Unit tests — 62 across 9 classes (`app\src\test`, run with
-`.\gradlew.bat :app:testDebugUnitTest`):
-
-- `AppResultTest` — `map`/`onSuccess`/`onFailure` fire on the right variant
-- `DogResponseDtoTest` — JSON parsing of the generic envelope (map and string payloads), unknown-key tolerance, missing/malformed input
-- `SafeApiCallTest` — each exception type maps to the expected `AppError`; cancellation rethrown
-- `BreedRepositoryImplTest` — real Retrofit/OkHttp against MockWebServer: success mapping/sorting/caching, HTTP 500, garbage body, `"status":"error"`, connection refused, timeout; image fetch success / API error / 404
-- `DataStoreFavoritesDataSourceTest` — real JVM DataStore: toggle on/off, persistence, defaults, corrupt-store degradation
-- `BreedListViewModelTest` / `BreedDetailViewModelTest` — Turbine flow tests: state transitions, retry, filtering, favorites reactivity, cold-cache refresh, photo-fetch success and graceful degradation
-- `KoinModulesTest` — DI graph verified with Koin `verify()`
-- `UiErrorTest` — every `AppError` maps to a distinct string resource
-
-Instrumented tests — 21 across 3 classes (`app\src\androidTest`, run with
-`.\gradlew.bat :app:connectedDebugAndroidTest`, emulator/device required):
-
-- `BreedListScreenTest` / `BreedDetailScreenTest` — Compose UI tests on the stateless screens (states, callbacks, search, favorites), no Koin or network involved
-- `NavigationTest` — real NavHost + real ViewModels with a fake repository injected by overriding the Koin `BreedRepository` definition: list → detail → back, favorite toggle propagation
-
-## Building & running
-
-```
-.\gradlew.bat :app:assembleDebug          # build
-.\gradlew.bat :app:testDebugUnitTest      # unit tests
-.\gradlew.bat :app:connectedDebugAndroidTest  # UI tests (emulator required)
-.\gradlew.bat :app:lintDebug :app:assembleRelease
-```
-
-Requires JDK 17+; Gradle 9.4 / AGP 9.2 / Kotlin 2.4 (AGP built-in), compileSdk 36,
-minSdk 26.
-
-### Installing the release build on a device
-
-Scroll/animation smoothness must be judged on the **release** build — debug
-builds of Compose apps run without AOT compilation or R8 and feel several
-times slower (measured on a physical device: ~77 ms median frame time in
-debug vs ~7 ms in release for the same scroll). The release build type is
-R8-optimized and debug-signed precisely so it can be installed locally:
-
-```
-.\gradlew.bat :app:installRelease
-adb install -r app\build\outputs\apk\release\app-release.apk   # alternative
-```
-
-Notes:
-
-- With several devices attached, `installRelease` installs on **all** of them;
-  set `$env:ANDROID_SERIAL = "<serial>"` first (see `adb devices`) to target one.
-- Installing is silent — it does not launch the app. Open it from the launcher
-  or run `adb shell am start -n com.profico.minibreeds/.MainActivity`.
-- Pressing Run in Android Studio replaces it with the debug build again;
-  reinstall release before judging performance.
-- On MIUI/HyperOS devices, enable Developer options → "Install via USB" if the
-  install fails with `INSTALL_FAILED_USER_RESTRICTED`.
-
-## Scoped out (deliberately)
-
-- **Multi-module Gradle setup** — package-level layering carries the same boundaries at this size (see above).
-- **Pull-to-refresh / pagination** — the endpoint returns one small static payload.
-- **Room / offline cache of breeds** — the in-memory `StateFlow` cache plus refetch-on-cold-start covers the navigation and process-death cases the app actually has.
-- **Use-case layer** — see rationale above.
+- `BreedMappingTest` — the API payload maps to a sorted list of breeds.
+- `BreedListViewModelTest` — loads into content, search filters, favorite toggles,
+  and network failures surface as offline vs. generic errors. Uses a hand-written
+  `FakeBreedRepository`.

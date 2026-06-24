@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.profico.minibreeds.ui.navigation.MiniBreedsNavHost
+import com.profico.minibreeds.ui.MiniBreedsNavHost
 import com.profico.minibreeds.ui.theme.MiniBreedsTheme
 
 /** Single activity that hosts the entire Compose UI tree. */

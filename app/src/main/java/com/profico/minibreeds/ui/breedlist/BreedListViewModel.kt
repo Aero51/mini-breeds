@@ -1,99 +1,125 @@
 package com.profico.minibreeds.ui.breedlist
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
-import com.profico.minibreeds.core.AppError
-import com.profico.minibreeds.core.AppResult
-import com.profico.minibreeds.domain.model.Breed
-import com.profico.minibreeds.domain.repository.BreedRepository
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.profico.minibreeds.MiniBreedsApp
+import com.profico.minibreeds.data.Breed
+import com.profico.minibreeds.data.BreedRepository
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** Row shown in the breed list; favorite state is already merged in. */
+data class BreedListItem(
+    val name: String,
+    val subBreedCount: Int,
+    val isFavorite: Boolean,
+)
+
+/** What the breed list screen renders. */
+sealed interface BreedListUiState {
+    data object Loading : BreedListUiState
+    data class Error(val isOffline: Boolean) : BreedListUiState
+    data class Content(val breeds: List<BreedListItem>) : BreedListUiState
+}
+
 /**
- * Manages breed list state: loads breeds on creation, applies real-time search
- * filtering, and merges favorite state — all exposed as a single [uiState] flow.
+ * Loads the breed list, applies the real-time search filter, and merges in
+ * persisted favorites.
+ *
+ * The ViewModel keeps the three inputs it needs — the loaded [breeds], the search
+ * [query], and the current [favorites] — as plain fields, and rebuilds [uiState]
+ * with [recompute] whenever any of them changes. All of this runs on the main
+ * thread (via [viewModelScope]), so no synchronization is needed.
  */
 class BreedListViewModel(
     private val repository: BreedRepository,
 ) : ViewModel() {
 
-    private sealed interface LoadState {
-        data object Loading : LoadState
-        data class Loaded(val breeds: List<Breed>) : LoadState
-        data class Failed(val error: AppError) : LoadState
-    }
+    private val _uiState = MutableStateFlow<BreedListUiState>(BreedListUiState.Loading)
+    val uiState: StateFlow<BreedListUiState> = _uiState.asStateFlow()
 
-    private val loadState = MutableStateFlow<LoadState>(LoadState.Loading)
-
-    // Kept separate from uiState so typed text survives Loading/Error phases.
     private val _query = MutableStateFlow("")
-
-    /** Current search query; exposed so the screen can restore the field value. */
     val query: StateFlow<String> = _query.asStateFlow()
 
-    /** Combined, search-filtered, favorites-merged state ready for the screen to render. */
-    val uiState: StateFlow<BreedListUiState> =
-        combine(loadState, _query, repository.favorites) { load, query, favorites ->
-            when (load) {
-                is LoadState.Loading -> BreedListUiState.Loading
-                is LoadState.Failed -> BreedListUiState.Error(load.error)
-                is LoadState.Loaded -> {
-                    val trimmedQuery = query.trim()
-                    val rows = load.breeds
-                        .filter { it.name.contains(trimmedQuery, ignoreCase = true) }
-                        .map { breed ->
-                            BreedRowUi(
-                                name = breed.name,
-                                subBreedCount = breed.subBreeds.size,
-                                isFavorite = breed.name in favorites,
-                            )
-                        }
-                    BreedListUiState.Content(
-                        rows = rows,
-                        noResultsForQuery = rows.isEmpty() && load.breeds.isNotEmpty(),
-                    )
-                }
-            }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = BreedListUiState.Loading,
-        )
+    // Latest inputs that [recompute] builds the UI state from.
+    private var breeds: List<Breed> = emptyList()
+    private var favorites: Set<String> = emptySet()
+    private var loading: Boolean = true
+    private var error: BreedListUiState.Error? = null
 
     init {
-        load()
-    }
-
-    /** Updates the search query used to filter the breed list in [uiState]. */
-    fun onQueryChange(newQuery: String) {
-        _query.value = newQuery
-    }
-
-    /** Re-triggers a network fetch after a previous failure. */
-    fun retry() = load()
-
-    /** Toggles the favorite status of [breedName] in persistent storage. */
-    fun onToggleFavorite(breedName: String) {
-        viewModelScope.launch { repository.toggleFavorite(breedName) }
-    }
-
-    /** Performs the network fetch and transitions [loadState] accordingly. */
-    private fun load() {
+        loadBreeds()
+        // Keep favorites in sync and re-render the list whenever they change.
         viewModelScope.launch {
-            loadState.value = LoadState.Loading
-            loadState.value = when (val result = repository.refreshBreeds()) {
-                is AppResult.Success -> LoadState.Loaded(result.value)
-                is AppResult.Failure -> LoadState.Failed(result.error)
+            repository.favorites.collect { latest ->
+                favorites = latest
+                recompute()
             }
         }
     }
 
-    private companion object {
-        const val STOP_TIMEOUT_MILLIS = 5_000L
+    fun onQueryChange(value: String) {
+        _query.value = value
+        recompute()
+    }
+
+    fun retry() = loadBreeds()
+
+    fun onToggleFavorite(name: String) {
+        viewModelScope.launch { repository.toggleFavorite(name) }
+    }
+
+    private fun loadBreeds() {
+        loading = true
+        error = null
+        recompute()
+        viewModelScope.launch {
+            try {
+                breeds = repository.getBreeds()
+            } catch (e: IOException) {
+                // No network / host unreachable.
+                error = BreedListUiState.Error(isOffline = true)
+            } catch (e: Exception) {
+                error = BreedListUiState.Error(isOffline = false)
+            }
+            loading = false
+            recompute()
+        }
+    }
+
+    /** Rebuilds [uiState] from the latest breeds, query, and favorites. */
+    private fun recompute() {
+        val failure = error
+        _uiState.value = when {
+            failure != null -> failure
+            loading -> BreedListUiState.Loading
+            else -> BreedListUiState.Content(
+                breeds
+                    .filter { it.name.contains(_query.value.trim(), ignoreCase = true) }
+                    .map { breed ->
+                        BreedListItem(
+                            name = breed.name,
+                            subBreedCount = breed.subBreeds.size,
+                            isFavorite = breed.name in favorites,
+                        )
+                    },
+            )
+        }
+    }
+
+    companion object {
+        /** Manual ViewModel factory: pulls the repository off [MiniBreedsApp]. */
+        val Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as MiniBreedsApp
+                BreedListViewModel(app.repository)
+            }
+        }
     }
 }

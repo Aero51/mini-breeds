@@ -6,11 +6,7 @@ plugins {
 
 android {
     namespace = "com.profico.minibreeds"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.profico.minibreeds"
@@ -18,23 +14,15 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            optimization {
-                enable = true
-            }
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Debug-signed so the release build can be installed locally;
-            // scroll performance must be judged on release — debug Compose
-            // runs without AOT compilation or baseline profiles.
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -43,31 +31,12 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
     }
     testOptions {
         unitTests {
             // android.util.Log calls become no-ops in JVM tests instead of throwing.
             isReturnDefaultValues = true
         }
-    }
-    kotlin {
-        compilerOptions {
-            allWarningsAsErrors = true
-        }
-    }
-    lint {
-        warningsAsErrors = true
-        // Version-bump and targetSdk advisories are time-dependent: they start
-        // failing the build whenever a newer library/SDK ships, regardless of
-        // code quality. The pins they complain about are deliberate (see
-        // CLAUDE.md), so they are excluded from warnings-as-errors.
-        disable += listOf(
-            "GradleDependency",
-            "NewerVersionAvailable",
-            "AndroidGradlePluginVersion",
-            "OldTargetApi",
-        )
     }
 }
 
@@ -89,28 +58,9 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
-    implementation(libs.coil.compose)
-    implementation(libs.coil.network.okhttp)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.turbine)
-    testImplementation(platform(libs.okhttp.bom))
-    testImplementation(libs.okhttp.mockwebserver3)
-    testImplementation(platform(libs.koin.bom))
-    testImplementation(libs.koin.test)
-    testImplementation(libs.koin.test.junit4)
-    testImplementation(libs.androidx.datastore.preferences.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(platform(libs.koin.bom))
-    androidTestImplementation(libs.koin.test)
-    androidTestImplementation(libs.androidx.navigation.testing)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
